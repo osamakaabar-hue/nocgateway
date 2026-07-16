@@ -90,7 +90,7 @@ export default function TechnicalApprovalForm({
       </div>
 
       {/* Auto-filled Section */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div className="border border-black p-2 bg-gray-50 print:bg-transparent">
           <strong>{isRtl ? "الشركة المشغلة:" : "Operating Company:"}</strong> {claim.company}
         </div>
@@ -112,7 +112,7 @@ export default function TechnicalApprovalForm({
       <div className="mb-6">
         <h3 className="font-bold mb-3 border-b pb-1 text-slate-800">{isRtl ? "1. تصنيف المشروع:" : "1. Project Classification:"}</h3>
         {isEditable ? (
-          <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded border border-slate-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded border border-slate-200">
             {[
               { id: 0, label: isRtl ? "مشاريع الحفر وصيانة الآبار" : "Drilling & Well Maintenance" },
               { id: 1, label: isRtl ? "المرافق السطحية (Surface Facilities)" : "Surface Facilities" },
@@ -151,7 +151,7 @@ export default function TechnicalApprovalForm({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="flex items-center gap-2">
               <div className="w-4 h-4 border border-black flex items-center justify-center font-bold text-xs">{projectClassification === 0 ? '✓' : ''}</div> 
               {isRtl ? "مشاريع الحفر وصيانة الآبار" : "Drilling & Well Maintenance"}
@@ -310,7 +310,7 @@ export default function TechnicalApprovalForm({
         <h3 className="font-bold mb-4 text-center">{isRtl ? "الاعتمادات والتوقيعات الفنية" : "Technical Approvals & Signatures"}</h3>
         
         {isEditable ? (
-          <div className="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded border border-slate-200 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50 p-4 rounded border border-slate-200 text-xs">
             <div className="space-y-2">
               <label className="block font-bold text-slate-600">{isRtl ? "المدقق الفني / المهندس المختص:" : "Technical Auditor Name:"}</label>
               <input
@@ -343,7 +343,7 @@ export default function TechnicalApprovalForm({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-12 text-center font-bold text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 text-center font-bold text-sm">
             <div>
               <p>{isRtl ? "إعداد: المهندس المختص / المدقق الفني" : "Prepared by: Technical Specialist"}</p>
               <div className="mt-6 border-b border-black w-3/4 mx-auto pb-1 italic text-slate-700">{preparedByName}</div>

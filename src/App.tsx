@@ -2025,7 +2025,7 @@ export default function App() {
               
               {/* Filtering Controls */}
               <div className="flex flex-col gap-1.5">
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   <select
                     value={filterPriority}
                     onChange={(e: any) => setFilterPriority(e.target.value)}
@@ -2752,7 +2752,7 @@ export default function App() {
                              {isRtl ? "منح الاعتماد والموافقة الفنية (فتح خيار الفوترة)" : "Grant Technical Approval (Unlock Invoicing)"}
                            </button>
 
-                           <div className="grid grid-cols-2 gap-2">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                              <button
                                onClick={handleRequestInfoTechnical}
                                disabled={selectedClaim.status === "authorized_for_payment"}
@@ -2809,7 +2809,7 @@ export default function App() {
                             <CheckCircle2 className="w-4 h-4 text-purple-700" />
                             {isRtl ? "عمليات مطابقة وامتثال الدفتر المالي العام للمؤسسة" : "Central NOC Finance Ledger Compliance Checks"}
                           </h4>
-                          <div className={`grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400 font-semibold ${isRtl ? "text-right" : "text-left"}`}>
+                          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400 font-semibold ${isRtl ? "text-right" : "text-left"}`}>
                             <div className={`flex items-center gap-1 bg-slate-50 dark:bg-[#0a1930] p-1.5 rounded border border-slate-200 dark:border-slate-800 ${isRtl ? "flex-row-reverse" : ""}`}>
                               <span>{isRtl ? "الحد الأقصى للميزانية:" : "Budget Limit:"}</span>
                               <span className="font-mono font-bold text-slate-900 dark:text-white">{selectedClaim.claimedValue}</span>
@@ -3158,7 +3158,7 @@ export default function App() {
                           <span className="text-[10px] font-black text-slate-400 block uppercase">Operating Operator</span>
                           <span className="font-bold text-slate-800 block text-xs mt-0.5">{company}</span>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t">
                           <div>
                             <span className="text-[10px] font-black text-slate-400 block uppercase">Project Code</span>
                             <span className="font-mono font-bold text-amber-600 block text-xs mt-0.5">{code}</span>
@@ -3380,7 +3380,7 @@ export default function App() {
                         </div>
 
                         {/* Contract Details table */}
-                        <div className="grid grid-cols-2 gap-4 mb-6 text-[11px] bg-slate-50 border p-3 rounded font-sans">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-[11px] bg-slate-50 border p-3 rounded font-sans">
                           <div>
                             <span className="text-[9px] font-bold text-slate-400 block uppercase">OPERATING OPERATOR</span>
                             <span className="font-bold text-slate-800">{company}</span>
@@ -3448,7 +3448,7 @@ export default function App() {
                         </div>
 
                         {/* Signatures Block */}
-                        <div className="mt-10 pt-8 border-t border-dashed grid grid-cols-3 gap-4 text-center font-sans text-[10px]">
+                        <div className="mt-10 pt-8 border-t border-dashed grid grid-cols-1 sm:grid-cols-3 gap-4 text-center font-sans text-[10px]">
                           <div>
                             <div className="text-slate-400 font-bold mb-6 block uppercase text-[8px]">CONTRACTOR REP</div>
                             <div className="italic font-bold text-slate-800">Eng. Tarek El-Fassi</div>

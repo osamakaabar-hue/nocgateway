@@ -97,7 +97,7 @@ export default function Form2CertificateOfConformity({
         {isRtl ? "نموذج شهادة المطابقة وطلب الإذن بالدفع" : "Certificate of Conformity and Request for Payment Authorization Form"}
       </div>
 
-      <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-8 text-sm font-semibold">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 mb-8 text-sm font-semibold">
         <div className="flex items-center gap-2">
           <span>{isRtl ? "اسم الشركة المشغلة:" : "Operating Company:"}</span>
           <span className="border-b border-black flex-1 text-center italic">{claim.company}</span>

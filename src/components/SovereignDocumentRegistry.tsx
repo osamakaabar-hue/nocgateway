@@ -341,7 +341,7 @@ export default function SovereignDocumentRegistry({
       </div>
  
       {/* Quick stats cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-6 shrink-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 shrink-0">
         <div className={`border p-4 rounded-2xl flex items-center justify-between shadow-sm transition-colors duration-200 ${
           isDark ? "bg-[#0a0f1d]/50 border-slate-850" : "bg-white border-slate-200"
         } ${isRtl ? "flex-row-reverse text-right" : "text-left"}`}>
@@ -549,7 +549,7 @@ export default function SovereignDocumentRegistry({
             <select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className={`border rounded-xl py-1.5 px-3 text-xs focus:outline-none focus:border-amber-500 max-w-[160px] cursor-pointer ${
+              className={`border rounded-xl py-1.5 px-3 text-xs focus:outline-none focus:border-amber-500 max-w-full sm:max-w-[160px] cursor-pointer ${
                 isDark ? "bg-[#0a0f1d] border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-700"
               }`}
             >
@@ -642,7 +642,7 @@ export default function SovereignDocumentRegistry({
                           <div className="overflow-hidden">
                             <span 
                               onClick={() => setPreviewDoc(doc)}
-                              className={`font-bold text-xs group-hover:text-amber-500 transition-colors block truncate max-w-[280px] cursor-pointer ${
+                              className={`font-bold text-xs group-hover:text-amber-500 transition-colors block truncate max-w-full sm:max-w-[280px] cursor-pointer ${
                                 isDark ? "text-slate-200" : "text-slate-800"
                               } ${isRtl ? "text-right" : "text-left"}`}
                               title={doc.name}
@@ -660,7 +660,7 @@ export default function SovereignDocumentRegistry({
                       <td className="py-3.5 px-4">
                         <div className="text-xs">
                           <span className={`font-semibold block ${isDark ? "text-slate-300" : "text-slate-700"}`}>{doc.companyName}</span>
-                          <span className={`text-[10px] font-mono block mt-0.5 truncate max-w-[200px] ${isDark ? "text-slate-500" : "text-slate-400"}`} title={doc.projectTitle}>
+                          <span className={`text-[10px] font-mono block mt-0.5 truncate max-w-full sm:max-w-[200px] ${isDark ? "text-slate-500" : "text-slate-400"}`} title={doc.projectTitle}>
                             <strong className="text-amber-500 font-mono">{doc.projectCode}</strong> • {doc.projectTitle}
                           </span>
                         </div>

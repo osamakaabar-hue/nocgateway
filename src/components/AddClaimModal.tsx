@@ -193,7 +193,7 @@ export default function AddClaimModal({ isOpen, onClose, onAddClaim, currentUser
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                 {isRtl ? "اسم وعنوان حزمة العمل / المشروع *" : "Project Phase Title *"}
@@ -238,7 +238,7 @@ export default function AddClaimModal({ isOpen, onClose, onAddClaim, currentUser
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                 {isRtl ? "الرمز المرجعي للمطالبة الفنية *" : "Claim Reference Code *"}
@@ -267,7 +267,7 @@ export default function AddClaimModal({ isOpen, onClose, onAddClaim, currentUser
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                 {isRtl ? "قيمة ميزانية المرحلة الحالية باليورو *" : "WBS Stage Budget Value *"}
@@ -297,7 +297,7 @@ export default function AddClaimModal({ isOpen, onClose, onAddClaim, currentUser
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
             <div>
               <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 block mb-1">
                 {isRtl ? "نسبة الإنجاز السابقة (%)" : "Previous Progress (%)"}

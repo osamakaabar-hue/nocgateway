@@ -151,7 +151,7 @@ export default function InteractiveDashboard({ claims, currentUser, lang = "en",
                 setSelectedCompanyId(e.target.value);
                 setSelectedProjectId("ALL");
               }}
-              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-teal-500 shadow-sm max-w-[140px] md:max-w-[200px] truncate"
+              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-teal-500 shadow-sm w-full md:w-auto md:max-w-[200px] truncate"
             >
               <option value="ALL">{isRtl ? "جميع الشركات" : "All Companies"}</option>
               {availableCompanies.map(c => (
@@ -164,7 +164,7 @@ export default function InteractiveDashboard({ claims, currentUser, lang = "en",
           <select 
             value={selectedProjectId}
             onChange={(e) => setSelectedProjectId(e.target.value)}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-teal-500 shadow-sm max-w-[140px] md:max-w-[200px] truncate"
+            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-teal-500 shadow-sm w-full md:w-auto md:max-w-[200px] truncate"
           >
             <option value="ALL">{isRtl ? "جميع المشاريع" : "All Projects"}</option>
             {availableProjectsForDropdown.map(p => (
@@ -176,7 +176,7 @@ export default function InteractiveDashboard({ claims, currentUser, lang = "en",
           <select 
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-teal-500 shadow-sm max-w-[140px] md:max-w-[200px] truncate"
+            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-teal-500 shadow-sm w-full md:w-auto md:max-w-[200px] truncate"
           >
             <option value="ALL">{isRtl ? "جميع الحالات" : "All Statuses"}</option>
             <option value="approved_paid">{isRtl ? "معتمدة ومدفوعة" : "Approved & Paid"}</option>
@@ -187,7 +187,7 @@ export default function InteractiveDashboard({ claims, currentUser, lang = "en",
           <select 
             value={selectedTimeline}
             onChange={(e) => setSelectedTimeline(e.target.value)}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-teal-500 shadow-sm max-w-[140px] md:max-w-[200px] truncate"
+            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-teal-500 shadow-sm w-full md:w-auto md:max-w-[200px] truncate"
           >
             <option value="ALL">{isRtl ? "كل الوقت" : "All Time"}</option>
             <option value="2026">{isRtl ? "سنة 2026" : "Year 2026"}</option>
@@ -395,7 +395,7 @@ export default function InteractiveDashboard({ claims, currentUser, lang = "en",
                       claim.code
                     )}
                   </td>
-                  <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 max-w-[300px] truncate">{claim.title}</td>
+                  <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 max-w-full sm:max-w-[300px] truncate">{claim.title}</td>
                   {isNoc && selectedCompanyId === "ALL" && (
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{claim.company}</td>
                   )}

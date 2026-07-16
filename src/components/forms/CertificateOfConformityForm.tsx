@@ -34,7 +34,7 @@ export default function CertificateOfConformityForm({ claim, lcData, isRtl }: Ce
         {isRtl ? "شهادة المطابقة وطلب الإذن بالدفع" : "Certificate of Conformity & Request for Payment"}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         <div className="border border-black p-2">
           <strong>{isRtl ? "اسم الشركة المشغلة:" : "Operating Company:"}</strong> {claim.company}
         </div>
@@ -77,7 +77,7 @@ export default function CertificateOfConformityForm({ claim, lcData, isRtl }: Ce
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-12 mt-12 text-center font-bold">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 mt-12 text-center font-bold">
         <div>
           <p>{isRtl ? "مدير المشروع (الشركة المشغلة)" : "Project Manager (Operating Co.)"}</p>
           <div className="mt-8 border-b border-black w-3/4 mx-auto"></div>
