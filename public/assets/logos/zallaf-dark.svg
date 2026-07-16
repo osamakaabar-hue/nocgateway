@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <!-- Definitions for gradients and text paths -->
+  <defs>
+    <!-- Sunset gradient matching the real Zallaf logo -->
+    <linearGradient id="sunset-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#111827" /> <!-- Dark sky top -->
+      <stop offset="25%" stop-color="#1e3a8a" /> <!-- Deep blue -->
+      <stop offset="55%" stop-color="#4c1d95" /> <!-- Purple cloud layers -->
+      <stop offset="75%" stop-color="#ca8a04" /> <!-- Golden horizon -->
+      <stop offset="100%" stop-color="#b45309" /> <!-- Deep orange base -->
+    </linearGradient>
+
+    <!-- Path for Top Text (Clockwise arc, left to right) -->
+    <path id="top-text-path" d="M 52,200 A 148,148 0 0,1 348,200" fill="none" />
+    
+    <!-- Path for Bottom Text (Clockwise arc, right to left along bottom) -->
+    <path id="bottom-text-path" d="M 348,200 A 148,148 0 0,1 52,200" fill="none" />
+  </defs>
+
+  <!-- Outer Thick Ring (Dark Blue to blend in Dark Mode) -->
+  <circle cx="200" cy="200" r="190" fill="#0a1930" stroke="#f8fafc" stroke-width="7" />
+  <circle cx="200" cy="200" r="183" fill="none" stroke="#f8fafc" stroke-width="1.5" />
+
+  <!-- Inner Ring Separator for Center Art -->
+  <circle cx="200" cy="200" r="113" fill="none" stroke="#f8fafc" stroke-width="4" />
+
+  <!-- Separator Dots (Left & Right) -->
+  <circle cx="50" cy="200" r="9" fill="#f8fafc" />
+  <circle cx="350" cy="200" r="9" fill="#f8fafc" />
+
+  <!-- Center Sunset & Operations Illustration -->
+  <clipPath id="center-clip">
+    <circle cx="200" cy="200" r="111" />
+  </clipPath>
+
+  <g clip-path="url(#center-clip)">
+    <!-- Sunset Sky Background -->
+    <rect x="80" y="80" width="240" height="240" fill="url(#sunset-grad)" />
+
+    <!-- Big Glowing Golden Sun on Horizon -->
+    <circle cx="145" cy="245" r="28" fill="#fef08a" opacity="0.9" />
+    <circle cx="145" cy="245" r="38" fill="#fef08a" opacity="0.4" filter="blur(4px)" />
+
+    <!-- Ground / Hills Silhouette -->
+    <path d="M 80,315 Q 150,250 230,278 T 320,315 L 320,320 L 80,320 Z" fill="#18181b" />
+    <path d="M 170,315 Q 240,272 320,282 L 320,320 Z" fill="#09090b" opacity="0.85" />
+
+    <!-- Two Palm Trees Silhouette (Right side) -->
+    <!-- Tree 1 (Tall) -->
+    <g transform="translate(242, 274) scale(0.65)">
+      <!-- Trunk -->
+      <path d="M 0,0 Q -12,-40 -6,-80 Q -1,-80 6,0 Z" fill="#000000" />
+      <!-- Fronds -->
+      <path d="M -6,-80 Q -28,-92 -48,-87" stroke="#000000" stroke-width="3.5" fill="none" stroke-linecap="round" />
+      <path d="M -6,-80 Q -33,-108 -38,-118" stroke="#000000" stroke-width="3.5" fill="none" stroke-linecap="round" />
+      <path d="M -6,-80 Q 5,-118 16,-123" stroke="#000000" stroke-width="3.5" fill="none" stroke-linecap="round" />
+      <path d="M -6,-80 Q 28,-103 44,-98" stroke="#000000" stroke-width="3.5" fill="none" stroke-linecap="round" />
+      <path d="M -6,-80 Q 22,-77 38,-67" stroke="#000000" stroke-width="3.5" fill="none" stroke-linecap="round" />
+      <path d="M -6,-80 Q -17,-67 -27,-62" stroke="#000000" stroke-width="3.5" fill="none" stroke-linecap="round" />
+    </g>
+
+    <!-- Tree 2 (Short) -->
+    <g transform="translate(216, 280) scale(0.5)">
+      <!-- Trunk -->
+      <path d="M 0,0 Q -10,-35 -4,-70 Q 1,-70 5,0 Z" fill="#000000" />
+      <!-- Fronds -->
+      <path d="M -4,-70 Q -22,-82 -42,-77" stroke="#000000" stroke-width="3" fill="none" stroke-linecap="round" />
+      <path d="M -4,-70 Q -28,-98 -33,-108" stroke="#000000" stroke-width="3" fill="none" stroke-linecap="round" />
+      <path d="M -4,-70 Q 5,-108 13,-113" stroke="#000000" stroke-width="3" fill="none" stroke-linecap="round" />
+      <path d="M -4,-70 Q 22,-92 38,-87" stroke="#000000" stroke-width="3" fill="none" stroke-linecap="round" />
+      <path d="M -4,-70 Q -13,-57 -23,-52" stroke="#000000" stroke-width="3" fill="none" stroke-linecap="round" />
+    </g>
+
+    <!-- Oil Pumpjack Silhouette (Left side) -->
+    <g transform="translate(100, 122) scale(0.98)">
+      <!-- Base/Ground Plate -->
+      <rect x="0" y="165" width="100" height="8" rx="2" fill="#000000" />
+      
+      <!-- A-Frame Main Support structure -->
+      <line x1="50" y1="70" x2="22" y2="165" stroke="#000000" stroke-width="6" stroke-linecap="round" />
+      <line x1="50" y1="70" x2="78" y2="165" stroke="#000000" stroke-width="6" stroke-linecap="round" />
+      <line x1="50" y1="70" x2="50" y2="165" stroke="#000000" stroke-width="3" />
+      <!-- Bracing -->
+      <line x1="33" y1="130" x2="67" y2="130" stroke="#000000" stroke-width="4" />
+      <line x1="40" y1="100" x2="60" y2="100" stroke="#000000" stroke-width="3.5" />
+      <line x1="26" y1="150" x2="74" y2="150" stroke="#000000" stroke-width="3" />
+
+      <!-- Samson Post Pivot -->
+      <circle cx="50" cy="70" r="7" fill="#000000" />
+
+      <!-- Walking Beam rocking arm -->
+      <path d="M 5,60 L 105,82 L 105,74 L 5,52 Z" fill="#000000" />
+
+      <!-- Horsehead curved front part -->
+      <path d="M 5,56 C -4,54 -13,41 -13,26 C -13,11 -4,0 5,-2 C -2,13 -2,39 5,56 Z" fill="#000000" />
+      
+      <!-- Carrier Bar & Polished Rod hanging downwards -->
+      <line x1="-11" y1="26" x2="-11" y2="165" stroke="#000000" stroke-width="3" />
+      <rect x="-14" y="160" width="6" height="6" fill="#000000" />
+
+      <!-- Crank Arm, Counterweight & Gear box -->
+      <line x1="105" y1="78" x2="100" y2="135" stroke="#000000" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="82" y1="135" x2="100" y2="135" stroke="#000000" stroke-width="5.5" stroke-linecap="round" />
+      <path d="M 72,125 C 72,112 105,112 105,125 L 98,145 L 78,145 Z" fill="#000000" />
+      <rect x="72" y="145" width="22" height="20" rx="3" fill="#000000" />
+    </g>
+  </g>
+
+  <!-- Typography: Top Curved Arabic text (White) -->
+  <text font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="22" fill="#f8fafc">
+    <textPath href="#top-text-path" startOffset="50%" text-anchor="middle">
+      زلاف ليبيا للنفط والغاز
+    </textPath>
+  </text>
+
+  <!-- Typography: Bottom Curved English text (White) -->
+  <text font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="16.5" fill="#f8fafc" letter-spacing="1">
+    <textPath href="#bottom-text-path" startOffset="50%" text-anchor="middle">
+      ZALLAF LIBYA OIL &amp; GAS
+    </textPath>
+  </text>
+</svg>

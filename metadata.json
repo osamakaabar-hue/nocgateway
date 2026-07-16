@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Instant UI Architect",
+  "description": "go throu all module and check if there any issue also fora arabic UI make shure all screen trnslated ",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
