@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+node-v20.11.0-darwin-arm64/
+node.tar.gz
+noc_technical_audit_system.tar.gz
+
