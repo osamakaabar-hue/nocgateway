@@ -1192,5 +1192,42 @@
   "user_roles": [],
   "password_reset_tokens": [],
   "auth_audit_logs": [],
-  "pending_approvals": []
+  "pending_approvals": [],
+  "letter_of_credits": [
+    {
+      "id": "LC-2026-NOC-001",
+      "project_id": "PROJ-2026-WAHA-EXPANSION",
+      "subsidiary_id": "WAHA",
+      "total_value": 50000000,
+      "currency": "USD",
+      "issuing_bank": "Central Bank of Libya – Tripoli Branch",
+      "expiry_date": "2027-06-30",
+      "status": "ACTIVE",
+      "created_at": "2026-01-15T08:00:00.000Z"
+    },
+    {
+      "id": "LC-2026-NOC-002",
+      "project_id": "PROJ-2026-AGOCO-PIPELINE",
+      "subsidiary_id": "AGOCO",
+      "total_value": 30000000,
+      "currency": "USD",
+      "issuing_bank": "Sahara Bank – Benghazi",
+      "expiry_date": "2027-03-31",
+      "status": "ACTIVE",
+      "created_at": "2026-02-01T08:00:00.000Z"
+    },
+    {
+      "id": "LC-2026-NOC-003",
+      "project_id": "PROJ-2026-MELLITAH-GAS",
+      "subsidiary_id": "MELLITAH",
+      "total_value": 25000000,
+      "currency": "EUR",
+      "issuing_bank": "National Commercial Bank – Malta Branch",
+      "expiry_date": "2026-12-31",
+      "status": "ACTIVE",
+      "created_at": "2026-03-01T08:00:00.000Z"
+    }
+  ],
+  "form3_approvals": [],
+  "invoice_ocr_results": []
 }

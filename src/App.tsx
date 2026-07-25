@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Claim, Deliverable, Document, AuditLogEntry, DemoUser, RoleType, NotificationItem } from "./types";
 import { initialClaims, mockLcData } from "./data";
 import { Lang, translations, t } from "./i18n";
@@ -523,6 +523,7 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
     const saved = localStorage.getItem("noc_eppm_notifications");
@@ -1597,37 +1598,41 @@ export default function App() {
     setIsDragging(false);
   };
 
+  const handleFileUploadProcess = (file: File) => {
+    if (!selectedClaim) return;
+    const isImg = file.type.startsWith("image/");
+    const isXls = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
+    
+    const newDoc: Document = {
+      id: `doc-${Date.now()}`,
+      name: file.name,
+      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      uploadedAt: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+      type: isImg ? "IMAGE" : isXls ? "XLSX" : "PDF",
+      url: isImg ? "https://lh3.googleusercontent.com/aida-public/AB6AXuCBZO1wG_qTW9XLoXNcznnSQgbs4e8ez-KDVUHGDAAbEYHF8wDzJYk6fn4S1KIx0-bXpvE23YX_vq9tEyudiSmkotFuwrE8fnQNNZf391uNH-es6OmiSmWBWcvbnDJik6FkUrG1fvo3HNvs7R0YLmAx_OfANRM_TjXiachEv6E87tTVcYL4MEiufFsntpSRem8FwWC8bYiNxQC1t9kpTG22wBvQ8zxb6nU-eYqfB7FnZcPcB-GYAM6T1A" : undefined,
+    };
+
+    const updatedClaims = claims.map((c) => {
+      if (c.id === selectedClaim.id) {
+        return {
+          ...c,
+          documents: [...c.documents, newDoc],
+        };
+      }
+      return c;
+    });
+
+    setClaims(updatedClaims);
+    showToast(`Supporting file "${file.name}" uploaded successfully.`, "success");
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     if (!selectedClaim) return;
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      const isImg = file.type.startsWith("image/");
-      const isXls = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
-      
-      const newDoc: Document = {
-        id: `doc-${Date.now()}`,
-        name: file.name,
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        uploadedAt: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-        type: isImg ? "IMAGE" : isXls ? "XLSX" : "PDF",
-        url: isImg ? "https://lh3.googleusercontent.com/aida-public/AB6AXuCBZO1wG_qTW9XLoXNcznnSQgbs4e8ez-KDVUHGDAAbEYHF8wDzJYk6fn4S1KIx0-bXpvE23YX_vq9tEyudiSmkotFuwrE8fnQNNZf391uNH-es6OmiSmWBWcvbnDJik6FkUrG1fvo3HNvs7R0YLmAx_OfANRM_TjXiachEv6E87tTVcYL4MEiufFsntpSRem8FwWC8bYiNxQC1t9kpTG22wBvQ8zxb6nU-eYqfB7FnZcPcB-GYAM6T1A" : undefined,
-      };
-
-      const updatedClaims = claims.map((c) => {
-        if (c.id === selectedClaim.id) {
-          return {
-            ...c,
-            documents: [...c.documents, newDoc],
-          };
-        }
-        return c;
-      });
-
-      setClaims(updatedClaims);
-      showToast(`Supporting file "${file.name}" uploaded successfully.`, "success");
+      handleFileUploadProcess(e.dataTransfer.files[0]);
     }
   };
 
@@ -2733,10 +2738,22 @@ export default function App() {
                         {/* Document Upload Zone */}
                         {selectedClaim.status !== "authorized_for_payment" && (
                           <>
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              className="hidden"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  const file = e.target.files[0];
+                                  handleFileUploadProcess(file);
+                                }
+                              }}
+                            />
                             <div
                               onDragOver={handleDragOver}
                               onDragLeave={handleDragLeave}
                               onDrop={handleDrop}
+                              onClick={() => fileInputRef.current?.click()}
                               className={`mt-4 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-all ${
                                 isDragging
                                   ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/10"
@@ -2744,7 +2761,7 @@ export default function App() {
                               }`}
                             >
                               <Upload className="w-6 h-6 text-slate-400 mx-auto mb-2 animate-pulse" />
-                              <p className="text-[11px] font-black text-slate-700 dark:text-slate-300">{isRtl ? "اسحب وأسقط الملفات الهندسية والفنية هنا" : "Drag & drop technical files here"}</p>
+                              <p className="text-[11px] font-black text-slate-700 dark:text-slate-300">{isRtl ? "اسحب وأسقط الملفات الهندسية والفنية هنا أو انقر للاستعراض" : "Drag & drop technical files here or click to browse"}</p>
                               <p className="text-[9px] text-slate-400 mt-1">{isRtl ? "يتم حفظ الملفات محلياً في ذاكرة التخزين المؤقت للمحاكاة" : "Files are saved locally inside simulation cache"}</p>
                             </div>
 
