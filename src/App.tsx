@@ -917,9 +917,10 @@ export default function App() {
     const hostClaim = claims.find(c =>
       c.documents.some(d => d.id === previewDoc.id) ||
       c.id === previewDoc.claimId ||
+      c.code === previewDoc.claimId ||
       c.id === previewDoc.project_id ||
-      (previewDoc.name && previewDoc.name.includes(c.code))
-    );
+      (previewDoc.name && (previewDoc.name.includes(c.code) || c.code.includes(previewDoc.name.replace(/[^A-Za-z0-9]/g, ''))))
+    ) || claims.find(c => previewDoc.name && previewDoc.name.includes(c.companyId)) || claims[0];
     if (!hostClaim) return;
 
     const finalApprovedByName = form4ApprovedBy || (currentUser?.name && currentUser.role === 'pmo_auditor' ? currentUser.name : "Eng. Nadia Al-Kout");
@@ -973,6 +974,9 @@ export default function App() {
     setNotifications(prev => prev.filter(n => !(n.claimId === hostClaim.id && n.title.includes("SLA"))));
 
     setClaims(updatedClaims);
+    try {
+      localStorage.setItem("noc_eppm_claims", JSON.stringify(updatedClaims));
+    } catch (e) {}
     
     // Dispatch system-wide real-time notification
     addNotification(
