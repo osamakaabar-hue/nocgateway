@@ -5,7 +5,7 @@ import { initialClaims } from "../data";
 import { NotificationItem } from "../types";
 
 export const securityRouter = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || "super-secret-noc-key-for-dev";
+const getJwtSecret = () => process.env.JWT_SECRET || "noc_pm_secure_jwt_secret_key_32bytes_long_minimum!";
 
 // --- 3. Security Middleware Blueprint ---
 export interface AuthenticatedRequest extends express.Request {
@@ -36,12 +36,17 @@ export function authenticateToken(
   }
 
   try {
-    const verified = jwt.verify(token, JWT_SECRET) as any;
+    const verified = jwt.verify(token, getJwtSecret()) as any;
     // Cross-reference with database to enforce global session revocation (kill switches)
     const userInDb = db.prepare("SELECT * FROM users WHERE id = ?").get(verified.id) as any;
     
     if (!userInDb || userInDb.status !== "ACTIVE" || userInDb.version !== verified.version) {
       res.status(403).json({ error: "Access Denied: Session Invalidated or Revoked" });
+      return;
+    }
+
+    if (!userInDb.role) {
+      res.status(401).json({ error: { code: "AUTH_ROLE_MISSING", message: "Access Denied: User role is undefined or missing in database." } });
       return;
     }
 
@@ -51,17 +56,7 @@ export function authenticateToken(
       email: verified.email,
       company_id: verified.company_id,
       version: verified.version,
-      role: userInDb.id.includes("admin") 
-        ? "system_admin" 
-        : userInDb.id.includes("pmo") 
-        ? "pmo_auditor" 
-        : userInDb.id.includes("fin") && userInDb.company_id === "NOC_HQ"
-        ? "noc_finance"
-        : userInDb.id.includes("head")
-        ? "noc_head_of_accounts"
-        : userInDb.id.includes("pm")
-        ? "subsidiary_pm"
-        : "subsidiary_finance"
+      role: userInDb.role
     };
     next();
   } catch (err) {
@@ -291,3 +286,189 @@ securityRouter.get("/financials", authenticateToken, (req: AuthenticatedRequest,
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OCR PIPELINE & LC RECONCILIATION ROUTES
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { extractInvoiceViaOcr } from "./services/ocrService.js";
+import {
+  calculateLcBalance,
+  generateForm3WithLcGuard,
+  InsufficientLcFundsError,
+  LcNotFoundError,
+  OcrPendingReviewError
+} from "./services/lcReconciliationService.js";
+
+// POST /api/ocr/invoice
+securityRouter.post("/ocr/invoice", authenticateToken, async (req: AuthenticatedRequest, res) => {
+  const { claimId, attachmentId, fileBase64, mimeType } = req.body;
+
+  if (!claimId || !attachmentId || !fileBase64) {
+    res.status(400).json({ error: 'MISSING_FIELDS', message: 'claimId, attachmentId and fileBase64 are required.' });
+    return;
+  }
+
+  try {
+    const result = await extractInvoiceViaOcr(
+      { claimId, attachmentId, fileBase64, mimeType, actorUserId: req.user?.id || 'system' },
+      db
+    );
+
+    const statusCode = result.status === 'VERIFIED' ? 200 : 202;
+    res.status(statusCode).json({
+      success: true,
+      ocrResult: result,
+      requiresManualReview: result.status === 'MANUAL_REVIEW_REQUIRED',
+      message: result.status === 'VERIFIED'
+        ? `OCR verified at ${(result.overall_confidence * 100).toFixed(1)}% confidence.`
+        : `OCR confidence ${(result.overall_confidence * 100).toFixed(1)}% is below the 90% threshold. Invoice flagged for manual PMO review.`
+    });
+  } catch (err: any) {
+    console.error('[OCR] Extraction failed:', err.message);
+    res.status(500).json({ error: 'OCR_EXTRACTION_FAILED', message: err.message });
+  }
+});
+
+// PATCH /api/ocr/invoice/:ocrId/approve
+securityRouter.patch("/ocr/invoice/:ocrId/approve", authenticateToken, (req: AuthenticatedRequest, res) => {
+  const { ocrId } = req.params;
+  const userRole = req.user?.role || '';
+
+  if (userRole !== 'pmo_auditor' && userRole !== 'system_admin') {
+    res.status(403).json({ error: 'RBAC_FORBIDDEN', message: 'Only pmo_auditor or system_admin may manually approve OCR results.' });
+    return;
+  }
+
+  const ocrRecord = db.prepare('SELECT * FROM invoice_ocr_results WHERE id = ?').get(ocrId) as any;
+  if (!ocrRecord) {
+    res.status(404).json({ error: 'OCR_RECORD_NOT_FOUND', message: `No OCR result found for ID '${ocrId}'.` });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  db.prepare('UPDATE invoice_ocr_results SET reviewed_by = ?, reviewed_at = ? WHERE id = ?').run(req.user?.id, now, ocrId);
+
+  res.status(200).json({
+    success: true,
+    message: 'Invoice OCR result manually approved. Form 3 generation is now unblocked.',
+    ocrId,
+    reviewedBy: req.user?.id,
+    reviewedAt: now
+  });
+});
+
+// GET /api/ocr/review-queue
+securityRouter.get("/ocr/review-queue", authenticateToken, (req: AuthenticatedRequest, res) => {
+  const userRole = req.user?.role || '';
+  const ALLOWED = ['pmo_auditor', 'system_admin', 'noc_finance', 'noc_head_of_accounts'];
+  if (!ALLOWED.includes(userRole)) {
+    res.status(403).json({ error: 'RBAC_FORBIDDEN', message: 'Access denied to OCR review queue.' });
+    return;
+  }
+
+  const pending = (db.prepare('SELECT * FROM invoice_ocr_results').all() as any[])
+    .filter((r: any) => r.status === 'MANUAL_REVIEW_REQUIRED' && !r.reviewed_by)
+    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  res.status(200).json({ success: true, count: pending.length, queue: pending });
+});
+
+// GET /api/reconciliation/lc — List all Letter of Credits
+securityRouter.get("/reconciliation/lc", authenticateToken, (req: AuthenticatedRequest, res) => {
+  const ALLOWED = ['noc_finance', 'noc_head_of_accounts', 'system_admin', 'pmo_auditor', 'steering_committee'];
+  if (!ALLOWED.includes(req.user?.role || '')) {
+    res.status(403).json({ error: 'RBAC_FORBIDDEN', message: 'Access denied to LC records.' });
+    return;
+  }
+  const lcs = db.prepare('SELECT * FROM letter_of_credits').all();
+  res.status(200).json({ success: true, letterOfCredits: lcs });
+});
+
+// GET /api/reconciliation/lc/:lcId/balance — LC balance
+securityRouter.get("/reconciliation/lc/:lcId/balance", authenticateToken, (req: AuthenticatedRequest, res) => {
+  const ALLOWED = ['noc_finance', 'noc_head_of_accounts', 'system_admin', 'pmo_auditor', 'steering_committee'];
+  if (!ALLOWED.includes(req.user?.role || '')) {
+    res.status(403).json({ error: 'RBAC_FORBIDDEN', message: 'Access denied.' });
+    return;
+  }
+
+  try {
+    const balance = calculateLcBalance(req.params.lcId, db);
+    res.status(200).json({
+      success: true,
+      lcId:             balance.lc.id,
+      subsidiary:       balance.lc.subsidiary_id,
+      currency:         balance.lc.currency,
+      issuingBank:      balance.lc.issuing_bank,
+      expiryDate:       balance.lc.expiry_date,
+      lcStatus:         balance.lc.status,
+      totalValue:       balance.totalValue,
+      totalDisbursed:   balance.totalDisbursed,
+      remainingBalance: balance.remainingBalance,
+      utilizationPct:   Number(((balance.totalDisbursed / balance.totalValue) * 100).toFixed(2)),
+      disbursementsCount: balance.disbursements.length
+    });
+  } catch (err: any) {
+    if (err instanceof LcNotFoundError) {
+      res.status(404).json({ error: err.code, message: err.message });
+    } else {
+      res.status(500).json({ error: 'LC_BALANCE_ERROR', message: err.message });
+    }
+  }
+});
+
+// POST /api/form3/generate
+securityRouter.post("/form3/generate", authenticateToken, (req: AuthenticatedRequest, res) => {
+  const userRole = req.user?.role || '';
+  if (userRole !== 'noc_finance' && userRole !== 'system_admin') {
+    res.status(403).json({ error: 'RBAC_FORBIDDEN', message: 'Only noc_finance may generate Form 3 payment authorizations.' });
+    return;
+  }
+
+  const { claimId, lcId, requestedAmount, form3Reference } = req.body;
+  if (!claimId || !lcId || !requestedAmount) {
+    res.status(400).json({ error: 'MISSING_FIELDS', message: 'claimId, lcId and requestedAmount are required.' });
+    return;
+  }
+
+  const amount = Number(requestedAmount);
+  if (isNaN(amount) || amount <= 0) {
+    res.status(400).json({ error: 'INVALID_AMOUNT', message: 'requestedAmount must be a positive number.' });
+    return;
+  }
+
+  try {
+    const result = generateForm3WithLcGuard(
+      { claimId, lcId, requestedAmount: amount, actorUserId: req.user!.id, form3Reference },
+      db
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Form 3 (تعزيز وإذن بالدفع) generated and recorded against the Letter of Credit.',
+      form3Id:          result.form3Id,
+      form3Reference:   result.form3Reference,
+      approvedAmount:   result.approvedAmount,
+      remainingBalance: result.remainingBalance,
+      auditHash:        result.auditEventId,
+      issuedAt:         new Date().toISOString(),
+      issuedBy:         req.user?.id
+    });
+  } catch (err: any) {
+    if (err instanceof InsufficientLcFundsError) {
+      res.status(422).json(err.toHttpResponse());
+    } else if (err instanceof OcrPendingReviewError) {
+      res.status(403).json({
+        error: err.code,
+        message: err.message,
+        resolution: 'A PMO Auditor must review and approve the contractor invoice OCR result before Form 3 can be issued.'
+      });
+    } else if (err instanceof LcNotFoundError) {
+      res.status(404).json({ error: err.code, message: err.message });
+    } else {
+      res.status(500).json({ error: 'FORM3_GENERATION_ERROR', message: err.message });
+    }
+  }
+});
+

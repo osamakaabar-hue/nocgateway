@@ -13,7 +13,7 @@ adminRouter.use((req, res, next) => {
 // GET /api/admin/users
 adminRouter.get('/users', (req, res) => {
   const users = db.prepare(`
-    SELECT u.id, u.username, u.email, u.status, u.version, u.created_at, u.role, u.is_backup, u.requested_by, u.company_id, c.name as company_name 
+    SELECT u.id, u.username, u.email, u.status, u.version, u.created_at, u.role, u.is_backup, u.requested_by, u.company_id, u.sanctions_status, c.name as company_name 
     FROM users u 
     LEFT JOIN companies c ON u.company_id = c.id
   `).all();
@@ -69,9 +69,9 @@ adminRouter.post('/users', (req, res) => {
 
     db.transaction(() => {
       db.prepare(`
-        INSERT INTO users (id, company_id, username, email, password_hash, status, role, is_backup, requested_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(userId, companyId, username, email, hash, status, role || null, backupFlag, actorName);
+        INSERT INTO users (id, company_id, username, email, password_hash, status, role, is_backup, requested_by, sanctions_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(userId, companyId, username, email, hash, status, role || null, backupFlag, actorName, 'CLEARED');
 
       // If dual-authorization required, create a pending_approval record
       if (requireApproval) {

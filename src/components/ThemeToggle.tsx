@@ -17,7 +17,7 @@ export default function ThemeToggle({ className = "", lang = "en" }: ThemeToggle
       id="theme-toggle-controller"
       className={`bg-white dark:bg-[#0a1930] p-2 px-4 rounded-[24px] border border-slate-200/70 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4 transition-all duration-200 ${className}`}
     >
-      <div className={`flex flex-col select-none ${isRtl ? "text-right" : "text-left"}`}>
+      <div className={`hidden sm:flex flex-col select-none ${isRtl ? "text-right" : "text-left"}`}>
         <span className="text-xs font-extrabold text-slate-900 dark:text-slate-100 font-sans tracking-tight leading-none mb-0.5">
           {isRtl ? "المظهر النشط" : "Active Theme"}
         </span>
@@ -27,7 +27,7 @@ export default function ThemeToggle({ className = "", lang = "en" }: ThemeToggle
       </div>
       
       {/* Dynamic Vertical Divider */}
-      <div className="h-6 w-px bg-slate-200 dark:bg-slate-800" />
+      <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-800" />
 
       {/* Beautiful Rounded Button */}
       <button

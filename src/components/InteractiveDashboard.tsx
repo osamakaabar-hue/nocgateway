@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { Claim, DemoUser } from '../types';
 import { TENANT_CONFIG } from '../brandConfig';
 import { BarChart2, Briefcase, Activity, CheckCircle, TrendingUp, AlertTriangle } from 'lucide-react';
@@ -113,12 +113,12 @@ export default function InteractiveDashboard({ claims, currentUser, lang = "en",
     return base;
   }, [claims, isNoc, currentUser.companyId, selectedCompanyId]);
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, staggerChildren: 0.1 } }
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, scale: 0.95 },
     visible: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } }
   };
@@ -128,13 +128,14 @@ export default function InteractiveDashboard({ claims, currentUser, lang = "en",
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className={`p-6 max-w-7xl mx-auto space-y-8 ${isRtl ? 'font-sans' : ''}`}
+      className={`w-full h-full overflow-y-auto p-4 md:p-6 space-y-8 ${isRtl ? 'font-sans' : ''}`}
       dir={isRtl ? 'rtl' : 'ltr'}
     >
+      <div className="max-w-7xl mx-auto space-y-8">
       {/* Header & Filters */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
         <div className="flex-shrink-0">
-          <h2 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-teal-500 mb-2 whitespace-nowrap">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-teal-500 mb-2 leading-tight">
             {isRtl ? "لوحة القياس التفاعلية" : "Interactive Dashboard"}
           </h2>
           <p className="text-slate-500 font-medium">
@@ -366,8 +367,8 @@ export default function InteractiveDashboard({ claims, currentUser, lang = "en",
         <div className="p-6 border-b border-slate-200 dark:border-slate-700">
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">{isRtl ? "تفاصيل المشاريع" : "Project Details"}</h3>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-sm min-w-[800px]">
             <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400">
               <tr>
                 <th className={`px-6 py-4 font-semibold ${isRtl ? 'text-right' : 'text-left'}`}>{isRtl ? "رمز المشروع" : "Project Code"}</th>
@@ -432,6 +433,7 @@ export default function InteractiveDashboard({ claims, currentUser, lang = "en",
           </table>
         </div>
       </motion.div>
+      </div>
     </motion.div>
   );
 }

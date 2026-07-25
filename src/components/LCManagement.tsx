@@ -50,8 +50,14 @@ export default function LCManagement({
   const isNoc = currentUser.companyId === "NOC_HQ";
 
   const [activeView, setActiveView] = useState<"dashboard" | "forms">("dashboard");
-  const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
+  const [selectedClaimId, setSelectedClaimId] = useState<string | null>(claims && claims.length > 0 ? claims[0].id : null);
   const [dbLcData, setDbLcData] = useState<LcData[]>([]);
+
+  useEffect(() => {
+    if (!selectedClaimId && claims && claims.length > 0) {
+      setSelectedClaimId(claims[0].id);
+    }
+  }, [claims, selectedClaimId]);
 
   useEffect(() => {
     const fetchFinancials = async () => {
@@ -92,14 +98,18 @@ export default function LCManagement({
       
       const openLcsValue = companyClaims.reduce((sum, c) => sum + (c.numericValue || 0), 0);
       
-      const totalPaid = companyClaims
+      const { totalPaid, totalRetention } = companyClaims
         .filter(c => c.status === "authorized_for_payment")
-        .reduce((sum, c) => {
+        .reduce((acc, c) => {
           const amount = c.invoiceAmount || ((c.claimedProgress || 0) / 100 * (c.numericValue || 0));
-          return sum + amount;
-        }, 0);
+          const retentionAmount = c.retentionPercentage ? (amount * c.retentionPercentage) / 100 : 0;
+          return {
+            totalPaid: acc.totalPaid + (amount - retentionAmount),
+            totalRetention: acc.totalRetention + retentionAmount
+          };
+        }, { totalPaid: 0, totalRetention: 0 });
         
-      const outstandingCommitment = openLcsValue - totalPaid;
+      const outstandingCommitment = openLcsValue - (totalPaid + totalRetention);
       const availableBalance = baseData.allocatedShare - openLcsValue;
 
       return {
@@ -107,6 +117,7 @@ export default function LCManagement({
         openLcsCount,
         openLcsValue,
         totalPaid,
+        totalRetention,
         outstandingCommitment,
         availableBalance
       };
@@ -120,6 +131,7 @@ export default function LCManagement({
   const totalAllocated = lcData.reduce((acc, curr) => acc + curr.allocatedShare, 0);
   const totalOpen = lcData.reduce((acc, curr) => acc + curr.openLcsValue, 0);
   const totalPaid = lcData.reduce((acc, curr) => acc + curr.totalPaid, 0);
+  const totalRetention = lcData.reduce((acc, curr) => acc + (curr.totalRetention || 0), 0);
   const totalOutstanding = lcData.reduce((acc, curr) => acc + curr.outstandingCommitment, 0);
   const totalAvailable = lcData.reduce((acc, curr) => acc + curr.availableBalance, 0);
   const utilizationRate = ((totalAllocated - totalAvailable) / totalAllocated) * 100;
@@ -129,29 +141,27 @@ export default function LCManagement({
       <div className="max-w-7xl mx-auto print:max-w-full">
         
         {/* Header - Hidden on Print */}
-        <div className="flex items-center justify-between mb-8 print:hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 print:hidden">
           <div>
-            <h1 className="text-2xl font-black text-slate-800 dark:text-white mb-2 flex items-center gap-3">
-              <Briefcase className="w-8 h-8 text-teal-600 dark:text-teal-400" />
+            <h1 className={`text-xl sm:text-2xl font-black text-slate-800 dark:text-white mb-1 flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+              <Briefcase className="w-7 h-7 text-teal-600 dark:text-teal-400 shrink-0" />
               {isRtl ? "الاعتمادات والموقف المالي" : "LC & Financial Dashboard"}
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 font-medium">
+            <p className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm">
               {isRtl ? "لجنة متابعة تمويل مشروعات زيادة القدرة الإنتاجية" : "NOC Production Capacity Increase Projects - Financial Follow-up Committee"}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => window.print()}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 transition-colors shadow-md"
-            >
-              <Printer className="w-4 h-4" />
-              {isRtl ? "طباعة الكشف" : "Print Dashboard"}
-            </button>
-          </div>
+          <button 
+            onClick={() => window.print()}
+            className="flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 transition-colors shadow-md self-start sm:self-auto shrink-0"
+          >
+            <Printer className="w-4 h-4" />
+            {isRtl ? "طباعة الكشف" : "Print Dashboard"}
+          </button>
         </div>
 
         {/* Top Navigation Tabs - Hidden on Print */}
-        <div className="flex bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl mb-6 w-fit print:hidden">
+        <div className="flex bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl mb-6 w-full sm:w-fit overflow-x-auto print:hidden">
           <button
             onClick={() => setActiveView("dashboard")}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
@@ -198,106 +208,151 @@ export default function LCManagement({
           </div>
 
           {/* Table Section */}
-          <div className="p-0 overflow-x-auto">
-            <div className="px-8 py-4 bg-slate-50 dark:bg-slate-800/50 print:bg-transparent font-bold text-slate-800 dark:text-white print:text-black">
+          <div className="p-0">
+            <div className="px-4 sm:px-8 py-4 bg-slate-50 dark:bg-slate-800/50 print:bg-transparent font-bold text-slate-800 dark:text-white print:text-black">
               {isRtl ? "أولاً: كشف الموقف المالي المجمع" : "First: Consolidated Financial Position"}
             </div>
-            <table className="w-full text-sm text-slate-600 dark:text-slate-300 print:text-black border-collapse">
-              <thead className="bg-slate-100 dark:bg-slate-900/50 print:bg-gray-100 text-slate-700 dark:text-slate-200 print:text-black font-black border-y border-slate-200 dark:border-slate-700 print:border-black">
-                <tr>
-                  <th className={`p-4 border-x border-slate-200 dark:border-slate-700 print:border-black ${isRtl ? 'text-right' : 'text-left'}`}>
-                    {isRtl ? "اسم الشركة المشغلة" : "Operating Company"}
-                  </th>
-                  <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
-                    {isRtl ? "الحصة المخصصة (دولار)" : "Allocated Share ($)"}
-                  </th>
-                  <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
-                    {isRtl ? "عدد الاعتمادات المفتوحة (LCs)" : "Open LCs Count"}
-                  </th>
-                  <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
-                    {isRtl ? "قيمة الاعتمادات المفتوحة (دولار)" : "Open LCs Value ($)"}
-                  </th>
-                  <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
-                    {isRtl ? "إجمالي المسدد (بموجب تعزيز المؤسسة)" : "Total Paid (NOC Auth)"}
-                  </th>
-                  <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
-                    {isRtl ? "الرصيد غير المسدد (الالتزام القائم)" : "Unpaid Balance (Outstanding)"}
-                  </th>
-                  <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
-                    {isRtl ? "الرصيد المتاح لفتح اعتمادات جديدة" : "Available Balance for New LCs"}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {lcData.map((co) => (
-                  <tr key={co.companyId} className="border-b border-slate-100 dark:border-slate-800 print:border-black hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black font-bold">
-                      {isRtl ? co.companyNameAr : co.companyName}
-                    </td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center text-teal-700 dark:text-teal-400 font-bold">
-                      {formatCurrency(co.allocatedShare)}
-                    </td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white font-bold">
-                        {co.openLcsCount}
-                      </span>
-                    </td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center font-semibold">
-                      {formatCurrency(co.openLcsValue)}
-                    </td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center font-semibold text-sky-600 dark:text-sky-400">
-                      {formatCurrency(co.totalPaid)}
-                    </td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center font-semibold text-rose-600 dark:text-rose-400">
-                      {formatCurrency(co.outstandingCommitment)}
-                    </td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10">
-                      {formatCurrency(co.availableBalance)}
-                    </td>
-                  </tr>
-                ))}
-                
-                {/* Other Companies Row (Blank/Placeholder as per PDF) */}
-                {isNoc && (
-                  <tr className="border-b border-slate-100 dark:border-slate-800 print:border-black bg-slate-50 dark:bg-slate-800/30">
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black font-bold">
-                      {isRtl ? "الشركات الأخرى" : "Other Companies"}
-                    </td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
-                    <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
-                  </tr>
-                )}
 
-                {/* Totals Row */}
-                <tr className="bg-slate-800 dark:bg-slate-950 text-white print:bg-gray-200 print:text-black font-black border-y border-slate-800 print:border-black">
-                  <td className="p-4 border-x border-slate-700 print:border-black">
-                    {isRtl ? "الإجمالي" : "Total"}
-                  </td>
-                  <td className="p-4 border-x border-slate-700 print:border-black text-center text-teal-300 print:text-black">
-                    {formatCurrency(totalAllocated)}
-                  </td>
-                  <td className="p-4 border-x border-slate-700 print:border-black text-center">
-                    {lcData.reduce((acc, curr) => acc + curr.openLcsCount, 0)}
-                  </td>
-                  <td className="p-4 border-x border-slate-700 print:border-black text-center">
-                    {formatCurrency(totalOpen)}
-                  </td>
-                  <td className="p-4 border-x border-slate-700 print:border-black text-center text-sky-300 print:text-black">
-                    {formatCurrency(totalPaid)}
-                  </td>
-                  <td className="p-4 border-x border-slate-700 print:border-black text-center text-rose-300 print:text-black">
-                    {formatCurrency(totalOutstanding)}
-                  </td>
-                  <td className="p-4 border-x border-slate-700 print:border-black text-center text-emerald-300 print:text-black">
-                    {formatCurrency(totalAvailable)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            {/* ── MOBILE CARDS (hidden on md+ and on print) ── */}
+            <div className="md:hidden print:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {lcData.map((co) => (
+                <div key={co.companyId} className={`p-4 space-y-3 ${isRtl ? 'text-right' : 'text-left'}`}>
+                  <div className="font-black text-slate-900 dark:text-white text-sm">
+                    {isRtl ? co.companyNameAr : co.companyName}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{isRtl ? "الحصة" : "Allocated"}</div>
+                      <div className="font-bold text-teal-700 dark:text-teal-400 break-all">{formatCurrency(co.allocatedShare)}</div>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{isRtl ? "اعتمادات مفتوحة" : "Open LCs"}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-bold text-sm">{co.openLcsCount}</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300 break-all">{formatCurrency(co.openLcsValue)}</span>
+                      </div>
+                    </div>
+                    <div className="bg-sky-50 dark:bg-sky-900/20 rounded-lg p-2.5">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{isRtl ? "المسدد" : "Total Paid"}</div>
+                      <div className="font-bold text-sky-600 dark:text-sky-400 break-all">{formatCurrency(co.totalPaid)}</div>
+                    </div>
+                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-2.5">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{isRtl ? "محتجز الضمان" : "Retention"}</div>
+                      <div className="font-bold text-orange-600 dark:text-orange-400 break-all">{formatCurrency(co.totalRetention || 0)}</div>
+                    </div>
+                    <div className="bg-rose-50 dark:bg-rose-900/20 rounded-lg p-2.5">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{isRtl ? "الالتزام القائم" : "Outstanding"}</div>
+                      <div className="font-bold text-rose-600 dark:text-rose-400 break-all">{formatCurrency(co.outstandingCommitment)}</div>
+                    </div>
+                  </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2.5">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{isRtl ? "الرصيد المتاح" : "Available Balance"}</div>
+                    <div className="font-black text-emerald-600 dark:text-emerald-400 break-all">{formatCurrency(co.availableBalance)}</div>
+                  </div>
+                </div>
+              ))}
+              {/* Mobile Totals */}
+              <div className={`p-4 bg-slate-800 text-white space-y-2 ${isRtl ? 'text-right' : 'text-left'}`}>
+                <div className="font-black text-sm">{isRtl ? "الإجمالي" : "Total"}</div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><span className="text-slate-400">{isRtl ? "الحصة:" : "Allocated:"}</span> <span className="text-teal-300 font-bold break-all">{formatCurrency(totalAllocated)}</span></div>
+                  <div><span className="text-slate-400">{isRtl ? "المسدد:" : "Paid:"}</span> <span className="text-sky-300 font-bold break-all">{formatCurrency(totalPaid)}</span></div>
+                  <div><span className="text-slate-400">{isRtl ? "محتجز الضمان:" : "Retention:"}</span> <span className="text-orange-300 font-bold break-all">{formatCurrency(totalRetention)}</span></div>
+                  <div><span className="text-slate-400">{isRtl ? "الالتزامات:" : "Outstanding:"}</span> <span className="text-rose-300 font-bold break-all">{formatCurrency(totalOutstanding)}</span></div>
+                  <div><span className="text-slate-400">{isRtl ? "المتاح:" : "Available:"}</span> <span className="text-emerald-300 font-bold break-all">{formatCurrency(totalAvailable)}</span></div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── DESKTOP TABLE (hidden on mobile, always shown on print) ── */}
+            <div className="hidden md:block overflow-x-auto print:block">
+              <table className="w-full text-sm text-slate-600 dark:text-slate-300 print:text-black border-collapse">
+                <thead className="bg-slate-100 dark:bg-slate-900/50 print:bg-gray-100 text-slate-700 dark:text-slate-200 print:text-black font-black border-y border-slate-200 dark:border-slate-700 print:border-black">
+                  <tr>
+                    <th className={`p-4 border-x border-slate-200 dark:border-slate-700 print:border-black ${isRtl ? 'text-right' : 'text-left'}`}>
+                      {isRtl ? "اسم الشركة المشغلة" : "Operating Company"}
+                    </th>
+                    <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
+                      {isRtl ? "الحصة المخصصة (دولار)" : "Allocated Share ($)"}
+                    </th>
+                    <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
+                      {isRtl ? "عدد الاعتمادات المفتوحة (LCs)" : "Open LCs Count"}
+                    </th>
+                    <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
+                      {isRtl ? "قيمة الاعتمادات المفتوحة (دولار)" : "Open LCs Value ($)"}
+                    </th>
+                    <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
+                      {isRtl ? "إجمالي المسدد (بموجب تعزيز المؤسسة)" : "Total Paid (NOC Auth)"}
+                    </th>
+                    <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
+                      {isRtl ? "محتجز ضمان العيوب" : "Retention Holdback"}
+                    </th>
+                    <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
+                      {isRtl ? "الرصيد غير المسدد (الالتزام القائم)" : "Unpaid Balance (Outstanding)"}
+                    </th>
+                    <th className="p-4 border-x border-slate-200 dark:border-slate-700 print:border-black text-center">
+                      {isRtl ? "الرصيد المتاح لفتح اعتمادات جديدة" : "Available Balance for New LCs"}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lcData.map((co) => (
+                    <tr key={co.companyId} className="border-b border-slate-100 dark:border-slate-800 print:border-black hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black font-bold">
+                        {isRtl ? co.companyNameAr : co.companyName}
+                      </td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center text-teal-700 dark:text-teal-400 font-bold">
+                        {formatCurrency(co.allocatedShare)}
+                      </td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white font-bold">
+                          {co.openLcsCount}
+                        </span>
+                      </td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center font-semibold">
+                        {formatCurrency(co.openLcsValue)}
+                      </td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center font-semibold text-sky-600 dark:text-sky-400">
+                        {formatCurrency(co.totalPaid)}
+                      </td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center font-semibold text-orange-600 dark:text-orange-400">
+                        {formatCurrency(co.totalRetention || 0)}
+                      </td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center font-semibold text-rose-600 dark:text-rose-400">
+                        {formatCurrency(co.outstandingCommitment)}
+                      </td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10">
+                        {formatCurrency(co.availableBalance)}
+                      </td>
+                    </tr>
+                  ))}
+
+                  {isNoc && (
+                    <tr className="border-b border-slate-100 dark:border-slate-800 print:border-black bg-slate-50 dark:bg-slate-800/30">
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black font-bold">
+                        {isRtl ? "الشركات الأخرى" : "Other Companies"}
+                      </td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
+                      <td className="p-4 border-x border-slate-100 dark:border-slate-800 print:border-black text-center"></td>
+                    </tr>
+                  )}
+
+                  <tr className="bg-slate-800 dark:bg-slate-950 text-white print:bg-gray-200 print:text-black font-black border-y border-slate-800 print:border-black">
+                    <td className="p-4 border-x border-slate-700 print:border-black">{isRtl ? "الإجمالي" : "Total"}</td>
+                    <td className="p-4 border-x border-slate-700 print:border-black text-center text-teal-300 print:text-black">{formatCurrency(totalAllocated)}</td>
+                    <td className="p-4 border-x border-slate-700 print:border-black text-center">{lcData.reduce((acc, curr) => acc + curr.openLcsCount, 0)}</td>
+                    <td className="p-4 border-x border-slate-700 print:border-black text-center">{formatCurrency(totalOpen)}</td>
+                    <td className="p-4 border-x border-slate-700 print:border-black text-center text-sky-300 print:text-black">{formatCurrency(totalPaid)}</td>
+                    <td className="p-4 border-x border-slate-700 print:border-black text-center text-rose-300 print:text-black">{formatCurrency(totalOutstanding)}</td>
+                    <td className="p-4 border-x border-slate-700 print:border-black text-center text-emerald-300 print:text-black">{formatCurrency(totalAvailable)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Executive Summary Section */}
@@ -425,9 +480,9 @@ export default function LCManagement({
         )}
 
         {activeView === "forms" && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 print:block">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8 print:block">
             {/* Sidebar list of claims - Hidden on print */}
-            <div className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 h-fit max-h-[80vh] overflow-y-auto print:hidden">
+            <div className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 h-[40vh] lg:h-fit lg:max-h-[80vh] overflow-y-auto print:hidden">
               <h3 className="font-bold text-slate-800 dark:text-white mb-4 px-2">
                 {isRtl ? "سجل المطالبات / الفواتير" : "Claims / Invoices Log"}
               </h3>
@@ -493,7 +548,7 @@ export default function LCManagement({
                         <TechnicalApprovalForm claim={claim} lcData={companyLcData} isRtl={isRtl} />
                       )}
 
-                      {(activeRole === "noc_finance" || activeRole === "noc_head_of_accounts" || activeRole === "system_admin") && (
+                      {(activeRole === "noc_finance" || activeRole === "noc_head_of_accounts" || activeRole === "steering_committee" || activeRole === "pmo_auditor" || activeRole === "system_admin") && (
                         <PaymentAuthorizationForm claim={claim} lcData={companyLcData} isRtl={isRtl} />
                       )}
                     </div>

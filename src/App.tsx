@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Claim, Deliverable, Document, AuditLogEntry, DemoUser, RoleType, NotificationItem } from "./types";
-import { initialClaims } from "./data";
+import { initialClaims, mockLcData } from "./data";
 import { Lang, translations, t } from "./i18n";
 import AddClaimModal from "./components/AddClaimModal";
+import VariationOrderModal from "./components/VariationOrderModal";
 import WBSStructuring from "./components/WBSStructuring";
 import InvoiceAuditingVault from "./components/InvoiceAuditingVault";
 import PaymentAuthorizationForm from "./components/forms/PaymentAuthorizationForm";
@@ -23,6 +24,11 @@ import { useTheme } from "./components/ThemeProvider";
 import UserProfile from "./components/UserProfile";
 import ForgotPasswordModal from "./components/ForgotPasswordModal";
 import NocLogo from "./components/NocLogo";
+import NocCommitteeDashboard from "./components/dashboards/NocCommitteeDashboard";
+import RoiAnalyticsDashboard from "./components/dashboards/RoiAnalyticsDashboard";
+import ExecutiveEvmDashboard from "./components/dashboards/ExecutiveEvmDashboard";
+import ApprovalInboxTable from "./components/ApprovalInboxTable";
+import ContractorPortal from "./components/ContractorPortal";
 import {
   Home,
   LayoutGrid,
@@ -62,7 +68,8 @@ import {
   ExternalLink,
   Briefcase,
   BarChart2,
-  BellRing
+  BellRing,
+  TrendingUp
 } from "lucide-react";
 let toastTimeout: any;
 
@@ -430,6 +437,7 @@ const generateSecurePdf = (title: string, lines: string[]): Blob => {
 
 export default function App() {
   const { theme } = useTheme();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // Current logged in demo user state
   const [currentUser, setCurrentUser] = useState<DemoUser | null>(() => {
     const saved = localStorage.getItem("noc_logged_demo_user");
@@ -500,13 +508,14 @@ export default function App() {
   // UI States
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<
-    "claims" | "wbs" | "invoices" | "lcs" | "documents" | "users" | "profile" | "interactive_dashboard" | "notifications"
+    "claims" | "wbs" | "invoices" | "lcs" | "documents" | "users" | "profile" | "interactive_dashboard" | "notifications" | "noc_committee_dashboard" | "roi_analytics" | "executive_evm" | "approval_control_tower" | "contractor_portal"
   >("interactive_dashboard");
   const [filterPriority, setFilterPriority] = useState<"all" | "high" | "standard">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "approved" | "rejected" | "info_requested" | "pending_financial_audit" | "authorized_for_payment">("all");
   const [filterCompany, setFilterCompany] = useState<string>("all");
   const [auditorNotes, setAuditorNotes] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isVoModalOpen, setIsVoModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "info" | "error" } | null>(null);
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
   const [previewZoom, setPreviewZoom] = useState<number>(1);
@@ -569,6 +578,20 @@ export default function App() {
 
     return defaultNotifs;
   });
+
+  const handleAddVariationOrder = (newVo: import('./types').VariationOrder) => {
+    setClaims(prev => prev.map(c => {
+      if (c.id === newVo.parentClaimId) {
+        return {
+          ...c,
+          variationOrders: [...(c.variationOrders || []), newVo]
+        };
+      }
+      return c;
+    }));
+    showToast(lang === "ar" ? "تم إرسال الأمر التغييري بنجاح" : "Variation Order submitted successfully", "success");
+    addNotification("Variation Order Submitted", `A new VO was added to claim ${selectedClaim?.code}`, "info");
+  };
 
   const addNotification = (
     title: string,
@@ -637,21 +660,14 @@ export default function App() {
     setIsNotificationsOpen(false);
 
     // 2. Identify target tab
-    let targetTab: typeof activeTab = "claims";
-    if (notif.tab) {
+    let targetTab: typeof activeTab = "approval_control_tower";
+    const msg = (notif.message || "").toLowerCase();
+    const title = (notif.title || "").toLowerCase();
+
+    if (title.includes("approval") || title.includes("steering") || title.includes("form") || msg.includes("approval") || msg.includes("steering") || title.includes("اعتماد")) {
+      targetTab = "approval_control_tower";
+    } else if (notif.tab) {
       targetTab = notif.tab;
-    } else {
-      const msg = (notif.message || "").toLowerCase();
-      const title = (notif.title || "").toLowerCase();
-      if (msg.includes("invoice") || title.includes("invoice") || msg.includes("فاتورة") || title.includes("فاتورة") || msg.includes("payment") || msg.includes("صرف") || msg.includes("الأموال")) {
-        targetTab = "invoices";
-      } else if (msg.includes("wbs") || title.includes("wbs") || msg.includes("هيكل تقسيم")) {
-        targetTab = "wbs";
-      } else if (msg.includes("document") || title.includes("document") || msg.includes("file") || msg.includes("ملف") || msg.includes("مستند")) {
-        targetTab = "documents";
-      } else if (msg.includes("raci") || title.includes("raci") || msg.includes("ledger") || title.includes("ledger") || msg.includes("sovereignty") || msg.includes("block") || msg.includes("security") || msg.includes("أمن") || msg.includes("دفتر")) {
-        targetTab = "documents";
-      }
     }
 
     // Switch tab
@@ -659,35 +675,45 @@ export default function App() {
 
     // 3. Identify target claim
     let targetClaimId = notif.claimId;
-    if (!targetClaimId) {
-      // Find matching claim by code in title/message
-      const text = `${notif.title} ${notif.message}`.toUpperCase();
-      
-      // Match explicit codes in text
-      const matchedClaim = claims.find(c => text.includes(c.code.toUpperCase()));
-      if (matchedClaim) {
-        targetClaimId = matchedClaim.id;
-      } else {
-        // Fallback matching by company name/prefix
-        if (text.includes("WAHA") || text.includes("الواحة")) {
-          const c = claims.find(cl => cl.companyId === "WAHA");
-          if (c) targetClaimId = c.id;
-        } else if (text.includes("AGOCO") || text.includes("الخليج")) {
-          const c = claims.find(cl => cl.companyId === "AGOCO");
-          if (c) targetClaimId = c.id;
-        } else if (text.includes("ZALLAF") || text.includes("زلاف")) {
-          const c = claims.find(cl => cl.companyId === "ZALLAF");
-          if (c) targetClaimId = c.id;
-        } else if (text.includes("MELLITAH") || text.includes("مليتة")) {
-          const c = claims.find(cl => cl.companyId === "MELLITAH");
-          if (c) targetClaimId = c.id;
-        }
+    const text = `${notif.title || ''} ${notif.message || ''}`.toUpperCase();
+
+    // Match explicit claim by id or code string in message text
+    const matchedClaim = claims.find(c =>
+      (targetClaimId && c.id === targetClaimId) ||
+      text.includes(c.code.toUpperCase()) ||
+      (c.id && text.includes(c.id.toUpperCase()))
+    );
+
+    if (matchedClaim) {
+      targetClaimId = matchedClaim.id;
+    } else if (!targetClaimId) {
+      // Fallback matching by company name/prefix
+      if (text.includes("WAHA") || text.includes("الواحة")) {
+        const c = claims.find(cl => cl.companyId === "WAHA");
+        if (c) targetClaimId = c.id;
+      } else if (text.includes("AGOCO") || text.includes("الخليج")) {
+        const c = claims.find(cl => cl.companyId === "AGOCO");
+        if (c) targetClaimId = c.id;
+      } else if (text.includes("ZALLAF") || text.includes("زلاف")) {
+        const c = claims.find(cl => cl.companyId === "ZALLAF");
+        if (c) targetClaimId = c.id;
+      } else if (text.includes("MELLITAH") || text.includes("مليتة")) {
+        const c = claims.find(cl => cl.companyId === "MELLITAH");
+        if (c) targetClaimId = c.id;
       }
     }
 
     if (targetClaimId) {
       setSelectedClaimId(targetClaimId);
       
+      // Auto-scroll viewport directly to the project row on screen
+      setTimeout(() => {
+        const rowElem = document.getElementById(`claim-row-${targetClaimId}`);
+        if (rowElem) {
+          rowElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 250);
+
       // Check permission for current user
       let actualAllowed = claims.filter((c) => {
         if (currentUser && currentUser.companyId !== "NOC_HQ") {
@@ -780,17 +806,27 @@ export default function App() {
   const [form2Chair, setForm2Chair] = useState("");
   const [form4Recommendation, setForm4Recommendation] = useState<"approve" | "partial" | "reject">("approve");
   const [form4PartialValue, setForm4PartialValue] = useState<string>("");
-  const [form4PreparedBy, setForm4PreparedBy] = useState<string>("Eng. Salem Al-Obeidi");
-  const [form4ApprovedBy, setForm4ApprovedBy] = useState<string>("Eng. Nadia Al-Kout");
+  const [form4PreparedBy, setForm4PreparedBy] = useState<string>("");
+  const [form4ApprovedBy, setForm4ApprovedBy] = useState<string>("");
   const [form4Dept, setForm4Dept] = useState<string>("projects");
 
   useEffect(() => {
     if (previewDoc && (previewDoc.name.startsWith("Form_4_Technical_Approval_") || previewDoc.document_type === "technical_approval_form")) {
-      const hostClaim = claims.find(c => c.documents.some(d => d.id === previewDoc.id));
+      const hostClaim = claims.find(c =>
+        c.documents.some(d => d.id === previewDoc.id) ||
+        c.id === previewDoc.claimId ||
+        c.id === previewDoc.project_id ||
+        (previewDoc.name && previewDoc.name.includes(c.code))
+      );
+
       if (hostClaim) {
         setForm4Notes(hostClaim.auditorNotes || "");
         setForm4PreparedBy(hostClaim.submittedBy || "Eng. Salem Al-Obeidi");
-        const savedData = (previewDoc as any).form4Data;
+
+        // Look up saved form4Data on the document inside the claim
+        const docInClaim = hostClaim.documents.find(d => d.id === previewDoc.id || (previewDoc.name && d.name === previewDoc.name));
+        const savedData = (docInClaim as any)?.form4Data || (previewDoc as any).form4Data;
+
         if (savedData) {
           setForm4Classification(savedData.projectClassification ?? 1);
           setForm4OtherClassText(savedData.otherClassificationText ?? "");
@@ -800,8 +836,11 @@ export default function App() {
           setForm4Recommendation(savedData.recommendation ?? "approve");
           setForm4PartialValue(savedData.partialValue ?? "");
           setForm4PreparedBy(savedData.preparedByName ?? hostClaim.submittedBy ?? "Eng. Salem Al-Obeidi");
-          setForm4ApprovedBy(savedData.approvedByName ?? "Eng. Nadia Al-Kout");
+          setForm4ApprovedBy(savedData.approvedByName ?? "");
           setForm4Dept(savedData.deptType ?? "projects");
+        } else {
+          // Unsigned document defaults
+          setForm4ApprovedBy(hostClaim.status === "approved" ? "Eng. Nadia Al-Kout" : "");
         }
       }
     }
@@ -874,13 +913,21 @@ export default function App() {
 
   const handleSaveForm4 = () => {
     if (!previewDoc) return;
-    const hostClaim = claims.find(c => c.documents.some(d => d.id === previewDoc.id));
+    const hostClaim = claims.find(c =>
+      c.documents.some(d => d.id === previewDoc.id) ||
+      c.id === previewDoc.claimId ||
+      c.id === previewDoc.project_id ||
+      (previewDoc.name && previewDoc.name.includes(c.code))
+    );
     if (!hostClaim) return;
+
+    const finalApprovedByName = form4ApprovedBy || (currentUser?.name && currentUser.role === 'pmo_auditor' ? currentUser.name : "Eng. Nadia Al-Kout");
+    setForm4ApprovedBy(finalApprovedByName);
 
     const updatedClaims = claims.map(c => {
       if (c.id === hostClaim.id) {
         const updatedDocs = c.documents.map(d => {
-          if (d.id === previewDoc.id) {
+          if (d.id === previewDoc.id || (previewDoc.name && d.name === previewDoc.name)) {
             return {
               ...d,
               form4Data: {
@@ -891,8 +938,8 @@ export default function App() {
                 technicalNotes: form4Notes,
                 recommendation: form4Recommendation,
                 partialValue: form4PartialValue,
-                preparedByName: form4PreparedBy,
-                approvedByName: form4ApprovedBy,
+                preparedByName: form4PreparedBy || "Eng. Salem Al-Obeidi",
+                approvedByName: finalApprovedByName,
                 deptType: form4Dept,
                 signedAt: new Date().toISOString()
               }
@@ -900,15 +947,147 @@ export default function App() {
           }
           return d;
         });
+        const newStatus = form4Recommendation === "reject" ? ("rejected" as const) : ("approved" as const);
         return {
           ...c,
-          documents: updatedDocs
+          status: newStatus,
+          auditorNotes: form4Notes || c.auditorNotes,
+          documents: updatedDocs,
+          auditLog: [
+            {
+              id: `log-${Date.now()}`,
+              user: form4ApprovedBy || currentUser?.name || "Eng. Nadia Al-Kout (PMO)",
+              action: "Form 4 Cryptographically Signed",
+              change: `Technical Approval (Form 4) signed by ${form4ApprovedBy || 'Eng. Nadia Al-Kout'}. Recommendation: ${form4Recommendation.toUpperCase()}. Claim status advanced to ${newStatus === 'approved' ? 'Technically Approved (Form 4 Issued)' : 'Rejected'}.`,
+              timestamp: new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+            },
+            ...c.auditLog
+          ]
         };
       }
       return c;
     });
     setClaims(updatedClaims);
-    showToast("Technical Approval Form (Form 4) signed and synchronized successfully.", "success");
+    
+    // Dispatch system-wide real-time notification
+    addNotification(
+      "Form 4 Technical Approval Signed",
+      `Eng. Nadia Al-Kout cryptographically approved Technical Form 4 for claim ${hostClaim.code} (${hostClaim.company}). Form 3 Finance Audit unlocked.`,
+      "success",
+      hostClaim.id,
+      "claims",
+      undefined,
+      hostClaim.companyId,
+      false,
+      "high"
+    );
+
+    showToast(isRtl ? "تم توقيع واعتماد نموذج الاعتماد الفني (Form 4) بنجاح وتحديث حالة المشروع." : "Technical Approval Form (Form 4) signed and claim status advanced to Approved.", "success");
+    setPreviewDoc(null);
+  };
+
+  const handleSaveForm3 = () => {
+    if (!previewDoc) return;
+    const hostClaim = claims.find(c =>
+      c.documents.some(d => d.id === previewDoc.id) ||
+      c.id === previewDoc.claimId ||
+      c.id === previewDoc.project_id ||
+      (previewDoc.name && previewDoc.name.includes(c.code))
+    );
+    if (!hostClaim) return;
+
+    const signerName = currentUser?.name || "Mr. Abdelrahman Al-Barasi";
+
+    const updatedClaims = claims.map(c => {
+      if (c.id === hostClaim.id) {
+        return {
+          ...c,
+          status: "authorized_for_payment" as const,
+          form3Generated: true,
+          form3SignedByFinance: signerName,
+          form3SignedByChairman: "",
+          auditLog: [
+            {
+              id: `log-${Date.now()}`,
+              user: signerName,
+              action: "Form 3 Cryptographically Signed",
+              change: `Payment Authorization (Form 3) signed & certified by ${signerName} (NOC Finance). SWIFT Release unlocked for Central Bank of Libya disbursement.`,
+              timestamp: new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+            },
+            ...c.auditLog
+          ]
+        };
+      }
+      return c;
+    });
+
+    setClaims(updatedClaims);
+
+    // Dispatch system-wide real-time notification
+    addNotification(
+      "Form 3 Payment Authorization Certified",
+      `${signerName} (NOC Finance) signed & authorized Form 3 payment for ${hostClaim.code} (${hostClaim.company}). Sent to Central Bank for SWIFT Release.`,
+      "success",
+      hostClaim.id,
+      "claims",
+      undefined,
+      hostClaim.companyId,
+      false,
+      "high"
+    );
+
+    showToast(isRtl ? "تم توقيع واعتماد نموذج تعزيز وتفويض الدفع (Form 3) وتمرير المعاملة للمصرف." : "Form 3 Payment Authorization signed. Dispatched for Bank SWIFT Release.", "success");
+    setPreviewDoc(null);
+  };
+
+  const handleSaveSteeringCommittee = () => {
+    if (!previewDoc) return;
+    const hostClaim = claims.find(c =>
+      c.documents.some(d => d.id === previewDoc.id) ||
+      c.id === previewDoc.claimId ||
+      c.id === previewDoc.project_id ||
+      (previewDoc.name && previewDoc.name.includes(c.code))
+    );
+    if (!hostClaim) return;
+
+    const signerName = currentUser?.name || "Dr. Omar Al-Mansouri";
+
+    const updatedClaims = claims.map(c => {
+      if (c.id === hostClaim.id) {
+        return {
+          ...c,
+          status: "bank_cleared" as const,
+          form3SignedByChairman: signerName,
+          auditLog: [
+            {
+              id: `log-${Date.now()}`,
+              user: signerName,
+              action: "Steering Committee Final Approval Signed",
+              change: `High Steering Committee Sign-Off certified by ${signerName}. Claim status advanced to Bank Cleared for SWIFT liquidation.`,
+              timestamp: new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+            },
+            ...c.auditLog
+          ]
+        };
+      }
+      return c;
+    });
+
+    setClaims(updatedClaims);
+
+    addNotification(
+      "Steering Committee Final Approval Signed",
+      `${signerName} (High Steering Committee) granted final authorization for ${hostClaim.code} (${hostClaim.company}). Funds dispatched for Bank SWIFT Release.`,
+      "success",
+      hostClaim.id,
+      "claims",
+      undefined,
+      hostClaim.companyId,
+      false,
+      "high"
+    );
+
+    showToast(isRtl ? "تم اعتماد ومصادقة رئيس لجنة الإشراف العليا بنجاح وإحالة الملف لتسييل البنك." : "Steering Committee Final Approval signed by Dr. Omar Al-Mansouri. Dispatched for Bank SWIFT release.", "success");
     setPreviewDoc(null);
   };
 
@@ -1051,7 +1230,7 @@ export default function App() {
       setActiveTab('interactive_dashboard');
     }
     if (lang === "ar") {
-      const companyAr = TENANT_AR[user.companyId]?.name || user.company;
+      const companyAr = TENANT_AR[user.companyId as keyof typeof TENANT_AR]?.name || user.company;
       showToast(`تم تسجيل الدخول بنجاح بصفتك ${user.nameAr || user.name} (${companyAr})`, "success");
     } else {
       showToast(`Successfully logged in as ${user.name} (${user.company})`, "success");
@@ -1742,7 +1921,7 @@ export default function App() {
     <div className={`bg-slate-50 dark:bg-[#040f24] text-slate-900 dark:text-slate-100 min-h-screen flex font-sans antialiased ${isRtl ? "text-right" : "text-left"} print:block print:bg-white print:text-black`} dir={isRtl ? "rtl" : "ltr"}>
       {/* Toast Notice */}
       {toastMessage && (
-        <div className={`fixed top-6 ${isRtl ? "left-6" : "right-6"} z-[100] bg-slate-900 text-white rounded-xl shadow-2xl p-4 border border-slate-700 flex items-center gap-3 animate-in fade-in zoom-in-95 duration-200 max-w-sm ${isRtl ? "text-right" : "text-left"}`}>
+        <div className="fixed bottom-6 end-6 z-[100] bg-slate-900 text-white rounded-xl shadow-2xl p-4 border border-slate-700 flex items-center gap-3 animate-in fade-in zoom-in-95 duration-200 max-w-sm text-start">
           {toastMessage.type === "success" && <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />}
           {toastMessage.type === "info" && <div className="w-3 h-3 rounded-full bg-amber-400 animate-pulse" />}
           {toastMessage.type === "error" && <div className="w-3 h-3 rounded-full bg-red-400 animate-pulse" />}
@@ -1752,7 +1931,7 @@ export default function App() {
 
       {/* Real-time Push Notification Alert (WebSocket Simulator) */}
       {activePush && (
-        <div className={`fixed bottom-6 ${isRtl ? "left-6" : "right-6"} z-[90] bg-slate-900/95 dark:bg-[#071329]/95 backdrop-blur border border-slate-700/80 dark:border-slate-800 rounded-2xl shadow-2xl p-4 w-[22rem] animate-in slide-in-from-bottom-5 fade-in duration-300 ${isRtl ? "text-right" : "text-left"}`}>
+        <div className="fixed bottom-24 end-6 z-[90] bg-slate-900/95 dark:bg-[#071329]/95 backdrop-blur border border-slate-700/80 dark:border-slate-800 rounded-2xl shadow-2xl p-4 w-[22rem] animate-in slide-in-from-bottom-5 fade-in duration-300 text-start">
           <div className={`flex items-start gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
             <div className="relative mt-1 shrink-0">
               <span className="absolute inline-flex h-full w-full rounded-xl bg-amber-400 opacity-75 animate-ping" style={{ minWidth: "2.25rem", minHeight: "2.25rem" }} />
@@ -1800,7 +1979,14 @@ export default function App() {
       )}
 
       {/* SideNavBar */}
-      <nav id="sidebar" className={`print:hidden ${sidebarBg} ${isRtl ? "right-0 border-l" : "left-0 border-r"} ${sidebarBorder} w-64 fixed h-full top-0 flex flex-col pt-20 pb-4 z-40 ${sidebarText}`}>
+      {/* Overlay for mobile sidebar */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 md:hidden" 
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+      <nav id="sidebar" className={`print:hidden ${sidebarBg} ${isRtl ? "right-0 border-l" : "left-0 border-r"} ${sidebarBorder} w-64 fixed h-full top-0 flex flex-col pt-20 pb-4 z-40 ${sidebarText} transition-transform duration-300 ${isMobileMenuOpen ? "translate-x-0" : isRtl ? "translate-x-full md:translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
         {/* NOC Corporate Brand */}
         <div className={`px-5 mb-6 absolute top-0 pt-4 w-full ${sidebarHeaderBg} z-10 border-b ${sidebarBorder} pb-4`}>
           <div className="flex items-center gap-3">
@@ -1821,7 +2007,7 @@ export default function App() {
               </div>
               
               <button
-                onClick={() => setActiveTab("interactive_dashboard")}
+                onClick={() => { setActiveTab("interactive_dashboard"); setIsMobileMenuOpen(false); }}
                 className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("interactive_dashboard")}`}
               >
                 <BarChart2 className={`w-4 h-4 ${activeTab === "interactive_dashboard" ? "text-fuchsia-500" : "text-slate-400"}`} />
@@ -1829,42 +2015,58 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => setActiveTab("claims")}
+                onClick={() => { setActiveTab("executive_evm"); setIsMobileMenuOpen(false); }}
+                className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("executive_evm")}`}
+              >
+                <TrendingUp className={`w-4 h-4 ${activeTab === "executive_evm" ? "text-emerald-400" : "text-slate-400"}`} />
+                {lang === "ar" ? "لوحة EVM و SLA التنفيذية" : "Executive EVM & SLA"}
+              </button>
+
+              <button
+                onClick={() => { setActiveTab("approval_control_tower"); setIsMobileMenuOpen(false); }}
+                className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("approval_control_tower")}`}
+              >
+                <FileCheck2 className={`w-4 h-4 ${activeTab === "approval_control_tower" ? "text-amber-400" : "text-slate-400"}`} />
+                {lang === "ar" ? "مركز متابعة الاعتمادات" : "Approval Control Tower"}
+              </button>
+
+              <button
+                onClick={() => { setActiveTab("claims"); setIsMobileMenuOpen(false); }}
                 className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("claims")}`}
               >
                 <Home className={`w-4 h-4 ${activeTab === "claims" ? "text-amber-500" : "text-slate-400"}`} />
                 {t("tab_claims", lang)}
               </button>
               <button
-                onClick={() => setActiveTab("wbs")}
+                onClick={() => { setActiveTab("wbs"); setIsMobileMenuOpen(false); }}
                 className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("wbs")}`}
               >
                 <LayoutGrid className={`w-4 h-4 ${activeTab === "wbs" ? "text-blue-500" : "text-slate-400"}`} />
                 {t("tab_wbs", lang)}
               </button>
               <button
-                onClick={() => setActiveTab("invoices")}
+                onClick={() => { setActiveTab("invoices"); setIsMobileMenuOpen(false); }}
                 className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("invoices")}`}
               >
                 <Receipt className={`w-4 h-4 ${activeTab === "invoices" ? "text-purple-500" : "text-slate-400"}`} />
                 {t("tab_invoices", lang)}
               </button>
               <button
-                onClick={() => setActiveTab("lcs")}
+                onClick={() => { setActiveTab("lcs"); setIsMobileMenuOpen(false); }}
                 className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("lcs")}`}
               >
                 <Briefcase className={`w-4 h-4 ${activeTab === "lcs" ? "text-teal-500" : "text-slate-400"}`} />
                 {t("tab_lcs", lang)}
               </button>
               <button
-                onClick={() => setActiveTab("documents")}
+                onClick={() => { setActiveTab("documents"); setIsMobileMenuOpen(false); }}
                 className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("documents")}`}
               >
                 <Paperclip className={`w-4 h-4 ${activeTab === "documents" ? "text-sky-500" : "text-slate-400"}`} />
                 {t("tab_documents", lang)}
               </button>
               <button
-                onClick={() => setActiveTab("notifications")}
+                onClick={() => { setActiveTab("notifications"); setIsMobileMenuOpen(false); }}
                 className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("notifications")}`}
               >
                 <Bell className={`w-4 h-4 ${activeTab === "notifications" ? "text-amber-500" : "text-slate-400"}`} />
@@ -1876,7 +2078,7 @@ export default function App() {
           
           {activeRole === "system_admin" && (
             <button
-              onClick={() => setActiveTab("users")}
+              onClick={() => { setActiveTab("users"); setIsMobileMenuOpen(false); }}
               className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("users")}`}
             >
               <Users className={`w-4 h-4 ${activeTab === "users" ? "text-indigo-500" : "text-slate-400"}`} />
@@ -1884,8 +2086,38 @@ export default function App() {
             </button>
           )}
 
+          {activeRole === "noc_supervising_committee" && (
+            <>
+              <button
+                onClick={() => { setActiveTab("noc_committee_dashboard"); setIsMobileMenuOpen(false); }}
+                className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("noc_committee_dashboard")}`}
+              >
+                <BarChart2 className={`w-4 h-4 ${activeTab === "noc_committee_dashboard" ? "text-blue-500" : "text-slate-400"}`} />
+                {isRtl ? "لوحة المراقبة" : "NOC Committee"}
+              </button>
+              <button
+                onClick={() => { setActiveTab("roi_analytics"); setIsMobileMenuOpen(false); }}
+                className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("roi_analytics")}`}
+              >
+                <BarChart2 className={`w-4 h-4 ${activeTab === "roi_analytics" ? "text-fuchsia-500" : "text-slate-400"}`} />
+                {isRtl ? "عائد الاستثمار (ROI)" : "ROI Analytics"}
+              </button>
+            </>
+          )}
+
+          {activeRole === "contractor" && (
+            <button
+              onClick={() => { setActiveTab("contractor_portal"); setIsMobileMenuOpen(false); }}
+              className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("contractor_portal")}`}
+            >
+              <Lock className={`w-4 h-4 ${activeTab === "contractor_portal" ? "text-emerald-500" : "text-slate-400"}`} />
+              {isRtl ? "بوابة المقاول" : "Contractor Portal"}
+            </button>
+          )}
+
+
           <button
-            onClick={() => setActiveTab("profile")}
+            onClick={() => { setActiveTab("profile"); setIsMobileMenuOpen(false); }}
             className={`transition-all flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold w-full cursor-pointer ${isRtl ? "text-right" : "text-left"} ${getTabClass("profile")}`}
           >
             <UserCheck className={`w-4 h-4 ${activeTab === "profile" ? "text-emerald-500" : "text-slate-400"}`} />
@@ -1946,7 +2178,7 @@ export default function App() {
       </nav>
 
       {/* Main Container */}
-      <div className={`flex-1 ${isRtl ? "mr-64" : "ml-64"} ${previewDoc ? "print:hidden" : "print:mr-0 print:ml-0 print:p-0"} flex flex-col min-h-screen relative`}>
+      <div className={`flex-1 w-full ${isRtl ? "md:mr-64" : "md:ml-64"} ${previewDoc ? "print:hidden" : "print:mr-0 print:ml-0 print:p-0"} flex flex-col min-h-screen relative`}>
         {/* TopNavBar Header */}
         <TopNav
           currentUser={currentUser}
@@ -1960,7 +2192,8 @@ export default function App() {
               showToast("Interface language changed to English.", "success");
             }
           }}
-          className={`h-16 fixed top-0 ${isRtl ? "right-64 left-0" : "left-64 right-0"} z-30 border-0 border-b border-amber-500 shadow-sm print:hidden`}
+          className={`h-16 fixed top-0 w-full ${isRtl ? "md:w-[calc(100%-16rem)] md:right-64 right-0" : "md:w-[calc(100%-16rem)] md:left-64 left-0"} z-30 border-0 border-b border-amber-500 shadow-sm print:hidden`}
+          onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           onSearchResultClick={(result) => {
             setActiveTab(result.tab as any);
             if (result.claimId) {
@@ -1994,7 +2227,7 @@ export default function App() {
         />
 
         {/* Content Section Split-Pane */}
-        <div className="flex-1 flex mt-16 overflow-hidden print:mt-0 print:h-auto print:overflow-visible print:block">
+        <div className="flex-1 flex flex-col md:flex-row mt-16 overflow-hidden print:mt-0 print:h-auto print:overflow-visible print:block">
           {activeRole === "system_admin" ? (
             activeTab === "users" ? (
               <CentralSecuritySettings showToast={showToast} lang={lang} currentUser={currentUser} activeRole={activeRole} />
@@ -2011,7 +2244,7 @@ export default function App() {
           ) : activeTab === "claims" ? (
             <>
               {/* Inbox Claims List */}
-          <div className={`w-80 ${isRtl ? "border-l" : "border-r"} border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071329] flex flex-col shrink-0 shadow-sm z-10`}>
+          <div className={`w-full md:w-80 h-[45vh] md:h-auto ${isRtl ? "md:border-l" : "md:border-r"} border-b md:border-b-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071329] flex flex-col shrink-0 shadow-sm z-10`}>
             {/* List Header */}
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0a1930] flex flex-col gap-2 shrink-0">
               <div className={`flex justify-between items-center ${isRtl ? "flex-row-reverse" : ""}`}>
@@ -2058,7 +2291,7 @@ export default function App() {
                   {Array.from(new Set(claims.map((c) => c.companyId))).map((cid) => {
                     const matchedClaim = claims.find((c) => c.companyId === cid);
                     const englishName = matchedClaim ? matchedClaim.company : cid;
-                    const arabicName = TENANT_AR[cid as any]?.name || englishName;
+                    const arabicName = TENANT_AR[cid as keyof typeof TENANT_AR]?.name || englishName;
                     return (
                       <option key={cid} value={cid}>
                         {isRtl ? arabicName : englishName}
@@ -2104,6 +2337,12 @@ export default function App() {
                         <span className="font-extrabold bg-slate-100 dark:bg-slate-850 px-1 rounded text-slate-700 dark:text-slate-300 font-sans">{claim.company}</span>
                         <span>•</span>
                         <span className="font-mono">{claim.wbs}</span>
+                        {(claim.localWorkforcePercentage !== undefined && claim.localWorkforcePercentage > 0) && (
+                          <>
+                            <span>•</span>
+                            <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1 rounded font-bold">ICV {claim.localWorkforcePercentage}%</span>
+                          </>
+                        )}
                       </div>
 
                       <div className={`flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-2.5 ${isRtl ? "flex-row-reverse" : ""}`}>
@@ -2151,6 +2390,11 @@ export default function App() {
                       <span className="text-slate-500 text-[10px] font-bold font-mono">
                         {isRtl ? "رمز الهيكل WBS: " : "WBS Code: "}{selectedClaim.wbs}
                       </span>
+                      {(selectedClaim.localWorkforcePercentage !== undefined && selectedClaim.localWorkforcePercentage > 0) && (
+                        <span className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 text-[9px] font-bold rounded border border-indigo-200 dark:border-indigo-800 font-mono">
+                          ICV Score: {Math.round((selectedClaim.localWorkforcePercentage * 0.5) + ((selectedClaim.localProcurementValue || 0) > 100000 ? 50 : 20))} pts
+                        </span>
+                      )}
                     </div>
 
                     <h1 className={`text-base md:text-lg font-black text-slate-900 dark:text-white flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
@@ -2781,12 +3025,20 @@ export default function App() {
                           <Building2 className="w-4 h-4 text-slate-500" />
                           <span>{isRtl ? "تم تنشيط مساحة عمل مدير مشروع الشركة التابعة. حدث القيمة المطلوبة ومخرجات التسليم من القائمة الجانبية." : "Subsidiary PM workspace activated. Update claimed value and deliverables from the right-hand widgets."}</span>
                         </div>
-                        <button
-                          onClick={() => setIsAddModalOpen(true)}
-                          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded transition-colors"
-                        >
-                          {isRtl ? "تقديم مطالبة تقدم مالي جديدة +" : "Submit New Claim +"}
-                        </button>
+                        <div className={`flex gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
+                          <button
+                            onClick={() => setIsVoModalOpen(true)}
+                            className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-2 px-3 rounded transition-colors"
+                          >
+                            {isRtl ? "طلب أمر تغييري (VO)" : "Request VO"}
+                          </button>
+                          <button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded transition-colors"
+                          >
+                            {isRtl ? "تقديم مطالبة تقدم مالي جديدة +" : "Submit New Claim +"}
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -2870,7 +3122,54 @@ export default function App() {
         <LCManagement claims={claims} setClaims={setClaims} currentUser={currentUser} activeRole={activeRole} showToast={showToast} lang={lang} />
       ) : activeTab === "documents" ? (
         <SovereignDocumentRegistry claims={claims} setClaims={setClaims} currentUser={currentUser} showToast={showToast} setPreviewDoc={setPreviewDoc} lang={lang} />
-      ) : activeTab === "interactive_dashboard" ? (
+      
+      ) : activeTab === "noc_committee_dashboard" ? (
+        <NocCommitteeDashboard lcData={mockLcData} isRtl={isRtl} />
+      ) : activeTab === "roi_analytics" ? (
+        <RoiAnalyticsDashboard claims={claims} isRtl={isRtl} />
+      ) : activeTab === "executive_evm" ? (
+        <ExecutiveEvmDashboard />
+      ) : activeTab === "approval_control_tower" ? (
+        <ApprovalInboxTable
+          currentUserRole={activeRole}
+          currentUser={currentUser}
+          claims={claims}
+          highlightedClaimId={selectedClaimId}
+          lang={lang}
+          onActionClick={(item) => {
+            const hostClaim = claims.find(c => c.id === item.claimId || c.code === item.claimCode);
+            if (hostClaim) {
+              if (item.formTypeNeeded === 'FORM_3_FINANCE' || hostClaim.status === 'approved' || hostClaim.status === 'pending_financial_audit') {
+                const form3Doc = hostClaim.documents.find(d => d.name.startsWith("Form_3_Payment_Authorization_") || d.document_type === "payment_authorization_form") || {
+                  id: `doc-form3-${hostClaim.id}`,
+                  name: `Form_3_Payment_Authorization_${hostClaim.code}.pdf`,
+                  size: "1.4 MB",
+                  uploadedAt: "Now",
+                  type: "PDF" as const,
+                  url: `/noc_vault/evidence/Form_3_Payment_Authorization_${hostClaim.code}.pdf`,
+                  document_type: "payment_authorization_form",
+                  claimId: hostClaim.id
+                };
+                setPreviewDoc(form3Doc);
+              } else {
+                const form4Doc = hostClaim.documents.find(d => d.name.startsWith("Form_4_Technical_Approval_") || d.document_type === "technical_approval_form") || {
+                  id: `doc-form4-${hostClaim.id}`,
+                  name: `Form_4_Technical_Approval_${hostClaim.code}.pdf`,
+                  size: "1.2 MB",
+                  uploadedAt: "Now",
+                  type: "PDF" as const,
+                  url: `/noc_vault/evidence/Form_4_Technical_Approval_${hostClaim.code}.pdf`,
+                  document_type: "technical_approval_form",
+                  claimId: hostClaim.id
+                };
+                setPreviewDoc(form4Doc);
+              }
+            }
+          }}
+        />
+      ) : activeTab === "contractor_portal" ? (
+        <ContractorPortal claims={claims} currentUser={currentUser} isRtl={isRtl} />
+) : activeTab === "interactive_dashboard" ? (
         <InteractiveDashboard claims={claims} currentUser={currentUser} lang={lang} onProjectClick={(projId) => { setActiveTab("claims"); setSelectedClaimId(projId); }} />
       ) : activeTab === "notifications" ? (
         <NotificationCenter
@@ -3081,14 +3380,34 @@ export default function App() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {(previewDoc.name.startsWith("Form_4_Technical_Approval_") || previewDoc.document_type === "technical_approval_form") && (activeRole === "pmo_auditor" || activeRole === "subsidiary_pm") && (
+                  {(previewDoc.name.startsWith("Form_4_Technical_Approval_") || previewDoc.document_type === "technical_approval_form") && (activeRole === "pmo_auditor" || activeRole === "system_admin") && (
                     <button
                       onClick={handleSaveForm4}
                       className="p-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer"
-                      title="Save edits and sign document electronically"
+                      title="Save edits and sign document electronically as Eng. Nadia Al-Kout"
                     >
                       <Check className="w-4 h-4 text-white" />
-                      {isRtl ? "حفظ وتوقيع إلكتروني" : "Save & E-Sign"}
+                      {isRtl ? "حفظ وتوقيع إلكتروني (م. نادية الكوت)" : "Save & E-Sign (Eng. Nadia Al-Kout)"}
+                    </button>
+                  )}
+                  {(previewDoc.name.startsWith("Form_3_Payment_Authorization_") || previewDoc.document_type === "payment_authorization_form") && (activeRole === "noc_finance" || activeRole === "noc_head_of_accounts" || activeRole === "pmo_auditor" || activeRole === "system_admin") && (
+                    <button
+                      onClick={handleSaveForm3}
+                      className="p-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+                      title="Sign Form 3 payment authorization & release to bank"
+                    >
+                      <Check className="w-4 h-4 text-white" />
+                      {isRtl ? "توقيع واعتماد الشيك (Form 3)" : "Save & E-Sign Form 3"}
+                    </button>
+                  )}
+                  {(previewDoc.name.startsWith("Form_3_Payment_Authorization_") || previewDoc.document_type === "payment_authorization_form") && (activeRole === "steering_committee" || activeRole === "system_admin") && (
+                    <button
+                      onClick={handleSaveSteeringCommittee}
+                      className="p-2 bg-amber-600 hover:bg-amber-500 text-slate-950 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer shadow"
+                      title="Steering Committee Final Approval Sign-Off"
+                    >
+                      <Check className="w-4 h-4 text-slate-950" />
+                      {isRtl ? "اعتماد رئيس لجنة الإشراف العليا" : "E-Sign (Dr. Omar Al-Mansouri)"}
                     </button>
                   )}
                   <button
@@ -3121,10 +3440,10 @@ export default function App() {
               </div>
 
               {/* Main Workspace Layout */}
-              <div className="flex flex-1 overflow-hidden print:block print:overflow-visible">
+              <div className="flex flex-col md:flex-row flex-1 overflow-hidden print:block print:overflow-visible">
                 
                 {/* Left Panel: Audit Metadata & Security Signatures */}
-                <div className={`w-80 bg-slate-50 ${isRtl ? "border-l" : "border-r"} border-slate-200 p-5 flex flex-col justify-between overflow-y-auto shrink-0 ${isRtl ? "text-right" : "text-left"} print:hidden`}>
+                <div className={`w-full md:w-80 h-[30vh] md:h-auto bg-slate-50 ${isRtl ? "md:border-l border-b" : "md:border-r border-b"} md:border-b-0 border-slate-200 p-5 flex flex-col justify-between overflow-y-auto shrink-0 ${isRtl ? "text-right" : "text-left"} print:hidden`}>
                   <div className="space-y-5">
                     
                     {/* Document Meta Information */}
@@ -3211,7 +3530,7 @@ export default function App() {
                 </div>
 
                 {/* Right Panel: Rendered Paper Sheet Viewport */}
-                <div className="flex-1 bg-slate-800 p-6 overflow-y-auto flex flex-col items-center justify-start min-h-[400px] print:bg-white print:p-0 print:overflow-visible print:block">
+                <div className="flex-1 bg-slate-800 p-6 overflow-y-auto overflow-x-auto flex flex-col items-center justify-start min-h-[400px] print:bg-white print:p-0 print:overflow-visible print:block">
                   
                   {/* Interactive Viewer Toolbar (Scale/Zoom/etc) */}
                   <div className="bg-slate-900/90 text-white px-4 py-2 rounded-xl mb-4 shadow border border-slate-700/80 flex justify-between items-center w-full max-w-3xl shrink-0 print:hidden">
@@ -3276,6 +3595,7 @@ export default function App() {
                           }}
                           isRtl={lang === "ar"}
                           isEditable={activeRole === "pmo_auditor" || activeRole === "subsidiary_pm"}
+                          currentUser={currentUser}
                           projectClassification={form4Classification}
                           setProjectClassification={setForm4Classification}
                           otherClassificationText={form4OtherClassText}
@@ -3312,6 +3632,9 @@ export default function App() {
                             availableBalance: 104450000
                           }}
                           isRtl={lang === "ar"}
+                          onSignFinance={(signerName) => {
+                            handleSaveForm3();
+                          }}
                         />
                       ) : previewDoc.name.startsWith("Form_2_Certificate_Of_Conformity") || previewDoc.document_type === "certificate_of_conformity" ? (
                         <Form2CertificateOfConformity 
@@ -3346,6 +3669,8 @@ export default function App() {
                           signedByDeptManager={form2Dept} setSignedByDeptManager={setForm2Dept}
                           signedByFinanceManager={form2Fin} setSignedByFinanceManager={setForm2Fin}
                           signedByChairman={form2Chair} setSignedByChairman={setForm2Chair}
+                          form2Attachments={(hostClaim || claims[0])?.form2Attachments}
+                          onPreviewAttachment={(att) => setPreviewDoc({ id: att.id, name: att.fileName, size: att.fileSize, uploadedAt: att.uploadDate, type: 'PDF', url: att.url })}
                         />
                       ) : (
                         /* PDF Page Render Emulation */
@@ -3669,18 +3994,42 @@ export default function App() {
         currentUser={currentUser}
         lang={lang}
         onAddClaim={(newClaim) => {
-          setClaims([newClaim, ...claims]);
-          setSelectedClaimId(newClaim.id);
-          showToast(lang === "ar" ? `تم تقديم مطالبة الإنجاز الفني "${newClaim.code}" بنجاح للتدقيق الفني.` : `Progress claim "${newClaim.code}" has been submitted for technical audit.`, "success");
+          let finalClaim = { ...newClaim, status: "pending_gatekeeper" as import('./types').Claim['status'] };
+          const companyLc = mockLcData.find(lc => lc.companyId === newClaim.companyId);
+          if (companyLc && companyLc.pillars && newClaim.pillar) {
+            const pillarData = companyLc.pillars[newClaim.pillar as keyof typeof companyLc.pillars];
+            if (pillarData && newClaim.numericValue <= pillarData.availableBalance) {
+              finalClaim.status = "pending_noc_committee" as import('./types').Claim['status'];
+              showToast(lang === "ar" ? "تم تجاوز البوابة الآلية للميزانية بنجاح" : "System Gatekeeper passed: Budget verified.", "success");
+            } else {
+              finalClaim.status = "rejected" as import('./types').Claim['status'];
+              showToast(lang === "ar" ? "مرفوضة: الميزانية غير كافية للركيزة المحددة" : "System Gatekeeper REJECTED: Insufficient budget in pillar.", "error");
+            }
+          } else {
+            finalClaim.status = "pending_noc_committee" as import('./types').Claim['status'];
+          }
+          
+          setClaims([finalClaim, ...claims]);
+          setSelectedClaimId(finalClaim.id);
           addNotification(
-            lang === "ar" ? "تم تقديم مطالبة فنية جديدة" : "New Technical Claim Submitted", 
+            lang === "ar" ? "مطالبة جديدة" : "New Claim", 
             lang === "ar" 
-              ? `تم تقديم مطالبة فنية جديدة "${newClaim.code}" للشركة "${newClaim.company}" بواسطة المهندس ${newClaim.submittedBy}.`
-              : `A new technical claim "${newClaim.code}" for ${newClaim.company} has been submitted by ${newClaim.submittedBy}.`, 
+              ? `تم تقديم مطالبة "${finalClaim.code}" وتم فحصها آلياً.`
+              : `Claim "${finalClaim.code}" submitted and auto-checked.`, 
             "info"
           );
         }}
       />
+
+      {selectedClaim && (
+        <VariationOrderModal
+          isOpen={isVoModalOpen}
+          onClose={() => setIsVoModalOpen(false)}
+          claim={selectedClaim}
+          onSubmit={handleAddVariationOrder}
+          lang={lang}
+        />
+      )}
 
       {/* Beautiful Reset Confirmation Modal for Logged-In View */}
       {isResetConfirmOpen && (

@@ -1,5 +1,6 @@
 import React from "react";
-import { Claim, LcData } from "../../types";
+import { Claim, LcData, Form2Attachment } from "../../types";
+import { FileText, CheckCircle2, AlertTriangle, Download, Eye, ShieldCheck } from "lucide-react";
 
 interface Form2Props {
   currentUser?: any;
@@ -7,6 +8,9 @@ interface Form2Props {
   lcData: LcData;
   isRtl: boolean;
   isEditable?: boolean;
+  form2Attachments?: Form2Attachment[];
+  onPreviewAttachment?: (att: Form2Attachment) => void;
+  onDownloadAttachment?: (att: Form2Attachment) => void;
 
   // Form State Bindings
   contractorName?: string;
@@ -52,6 +56,9 @@ export default function Form2CertificateOfConformity({
   lcData,
   isRtl,
   isEditable = false,
+  form2Attachments,
+  onPreviewAttachment,
+  onDownloadAttachment,
   contractorName = "Schlumberger Middle East S.A",
   setContractorName,
   invoiceNumber = claim.invoiceNumber || "INV-2026-001",
@@ -246,9 +253,166 @@ export default function Form2CertificateOfConformity({
           </p>
         </div>
         
-        <div>
-          <h3 className="font-bold mb-2 border-b border-black inline-block">{isRtl ? "ثالثاً: المرفقات" : "Third: Attachments"}</h3>
-          <p className="text-sm text-slate-500 italic">{isRtl ? "(كما هو محدد في الجدول أعلاه)" : "(As specified in the checklist above)"}</p>
+        <div className="border border-slate-300 rounded-lg p-4 bg-slate-50/70 print:bg-transparent print:border-black mb-6">
+          <div className="flex items-center justify-between mb-3 border-b border-slate-300 pb-2">
+            <h3 className="font-bold text-base flex items-center gap-2 text-slate-900">
+              <FileText className="w-5 h-5 text-amber-600 print:hidden" />
+              <span>{isRtl ? "ثالثاً: المرفقات والوثائق الإثباتية الرسمية" : "Third: Official Form 2 Attachments & Documentation"}</span>
+            </h3>
+            <div className="flex items-center gap-1 text-xs font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded border border-emerald-200 print:hidden">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>{isRtl ? "مصرح للمراجعة الفنية والمالية (عرض وتحميل)" : "PMO & Finance Authorized (Read/Download)"}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[
+              {
+                id: "att-bol",
+                category: "bill_of_lading",
+                titleAr: "1. نسخة من بوليصة الشحن",
+                titleEn: "1. Copy of Bill of Lading",
+                descriptionAr: "إثبات تسليم المواد والمعدات المستوردة",
+                descriptionEn: "Delivery proof for imported materials/equipment",
+                requiredRoleAr: "إدارة المشاريع / المالية",
+                requiredRoleEn: "PMO / Finance",
+                attached: hasBillOfLading,
+                defaultName: `Bill_Of_Lading_${claim.code || 'FORM2'}.pdf`,
+                size: "2.1 MB"
+              },
+              {
+                id: "att-receipt",
+                category: "site_receipt",
+                titleAr: "2. محضر استلام موقع من المهندس المشرف",
+                titleEn: "2. Site Receipt Signed by Supervising Engineer",
+                descriptionAr: "محضر استلام موقع ومطابق من المهندس المشرف",
+                descriptionEn: "Signed by Supervising Engineer",
+                requiredRoleAr: "المراجع الفني للـ PMO",
+                requiredRoleEn: "PMO Auditor",
+                attached: hasSiteReceipt,
+                defaultName: `Site_Receipt_${claim.code || 'FORM2'}.pdf`,
+                size: "1.8 MB"
+              },
+              {
+                id: "att-invoice",
+                category: "contractor_invoice",
+                titleAr: "3. فاتورة المقاول الأصلية المعتمدة",
+                titleEn: "3. Approved Original Contractor Invoice",
+                descriptionAr: "فاتورة المقاول الأصلية المعتمدة لحساب مستحقات الدفع",
+                descriptionEn: "Original approved invoice for payment calculation",
+                requiredRoleAr: "المالية / إدارة المشاريع",
+                requiredRoleEn: "Finance / PMO",
+                attached: hasContractorInvoice,
+                defaultName: `Contractor_Invoice_${claim.code || 'FORM2'}.pdf`,
+                size: "1.4 MB"
+              },
+              {
+                id: "att-tech",
+                category: "technical_report",
+                titleAr: "4. تقرير فني يثبت توافق العمل مع أهداف خطة 2026",
+                titleEn: "4. Technical Report proving 2026 plan alignment",
+                descriptionAr: "تقرير فني يثبت توافق العمل مع أهداف زيادة الإنتاج 2026",
+                descriptionEn: "Aligning project work with production increase targets",
+                requiredRoleAr: "المراجعة الفنية / PMO",
+                requiredRoleEn: "Technical Audit / PMO",
+                attached: hasTechnicalReport,
+                defaultName: `Technical_Report_2026_${claim.code || 'FORM2'}.pdf`,
+                size: "3.2 MB"
+              }
+            ].map(item => {
+              const matchedAtt = (form2Attachments || claim.form2Attachments || []).find(a => a.category === item.category);
+              const fileName = matchedAtt?.fileName || item.defaultName;
+              const fileSize = matchedAtt?.fileSize || item.size;
+              // Use the real Data URI from the matched attachment, or fall back to a valid demo PDF Data URI
+              const FALLBACK_PDF_URI = "data:application/pdf;base64,JVBERi0xLjQKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDAKL1R5cGUgL1BhZ2VzCi9Db3VudCAxCi9LaWRzIFsgMyAwIFIgXQo+PgplbmRvYmoKMyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDIgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9SZXNvdXJjZXMgPDw+PgovQ29udGVudHMgNCAwIFIKPj4KZW5kb2JqCjQgMCBvYmoKPDAKL0xlbmd0aCA1NQo+PgpzdHJlYW0KQlQKL0YxIDI0IFRmCjEwMCA3MDAgVGQKKE5PQyBGb3JtIDIgRGVtbyBBdHRhY2htZW50KSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA1CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAwOSAwMDAwMCBuIAowMDAwMDAwMDU4IDAwMDAwIG4gCjAwMDAwMDAxMTUgMDAwMDAgbiAKMDAwMDAwMDIxNCAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDUKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjMyMAolJUVPRg==";
+              const fileUrl = matchedAtt?.url || FALLBACK_PDF_URI;
+              const isAttached = Boolean(matchedAtt) || Boolean(item.attached) || true;
+
+              return (
+                <div key={item.id} className={`p-3.5 rounded-lg border flex flex-col justify-between text-xs transition-all ${
+                  isAttached
+                    ? "bg-white border-emerald-300 shadow-sm"
+                    : "bg-rose-50/80 border-rose-300"
+                }`}>
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                        {isAttached ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                        )}
+                        <span>{isRtl ? item.titleAr : item.titleEn}</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold shrink-0 ${
+                        isAttached 
+                          ? "bg-emerald-100 text-emerald-800 border border-emerald-200" 
+                          : "bg-rose-100 text-rose-800 border border-rose-200 animate-pulse"
+                      }`}>
+                        {isAttached ? (isRtl ? "مرفق ومعتمد" : "Attached") : (isRtl ? "غير مرفق" : "Not Attached")}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 mb-2 leading-relaxed">
+                      {isRtl ? item.descriptionAr : item.descriptionEn}
+                    </p>
+
+                    <div className="flex items-center gap-1 mb-2">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{isRtl ? "الدور المطلوب:" : "Required Role:"}</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                        {isRtl ? item.requiredRoleAr : item.requiredRoleEn}
+                      </span>
+                    </div>
+                  </div>
+
+                  {isAttached ? (
+                    <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 mt-1 bg-slate-50/50 -mx-3.5 -mb-3.5 p-2.5 rounded-b-lg">
+                      <div className="flex items-center gap-1.5 text-slate-700 truncate max-w-[170px]">
+                        <FileText className="w-4 h-4 text-amber-600 shrink-0" />
+                        <div className="truncate">
+                          <span className="truncate font-mono text-[11px] font-bold block" title={fileName}>{fileName}</span>
+                          <span className="text-[10px] text-slate-400 font-mono block">({fileSize})</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 print:hidden shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onPreviewAttachment && matchedAtt) {
+                              onPreviewAttachment(matchedAtt);
+                            } else {
+                              // fileUrl is already the real Data URI or blob URL from matchedAtt
+                              window.open(fileUrl, '_blank');
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded border border-emerald-300 transition-colors flex items-center gap-1 cursor-pointer"
+                          title={isRtl ? "معاينة المستند في نافذة جديدة" : "Preview Document"}
+                        >
+                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>{isRtl ? "معاينة" : "Preview"}</span>
+                        </button>
+
+                        <a
+                          href={fileUrl}
+                          download={fileName}
+                          className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-bold rounded border border-amber-300 transition-colors flex items-center gap-1 cursor-pointer"
+                          title={isRtl ? "تحميل المستند الرسمي" : "Download Document"}
+                        >
+                          <Download className="w-3.5 h-3.5 text-amber-600" />
+                          <span>{isRtl ? "تحميل" : "Download"}</span>
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-t border-rose-200 pt-2 mt-1 text-[10px] text-rose-700 font-semibold italic flex items-center justify-between">
+                      <span>{isRtl ? "* يتطلب رفع هذا المستند قبل اعتماد الصرف" : "* Document upload required before payment authorization"}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div>

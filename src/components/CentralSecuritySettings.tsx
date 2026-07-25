@@ -722,7 +722,121 @@ export default function CentralSecuritySettings({ showToast, lang, currentUser, 
             ))}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* ── MOBILE CARDS (hidden on md+) ── */}
+          <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+            {filteredUsers.map(user => {
+              const companyName = user.company_name || 'National Oil Corporation (NOC)';
+              const tenantId = user.company_id || getTenantId(companyName);
+              const tenantInfo = TENANT_CONFIG[tenantId as keyof typeof TENANT_CONFIG] || TENANT_CONFIG['NOC_HQ'];
+
+              const roleMap: Record<string, { label: string; labelAr: string; color: string }> = {
+                subsidiary_pm:        { label: "Project Manager",    labelAr: "مدير مشروع",     color: "bg-blue-100 text-blue-800 border-blue-200" },
+                subsidiary_finance:   { label: "Financial Officer",  labelAr: "مسؤول مالي",     color: "bg-purple-100 text-purple-800 border-purple-200" },
+                pmo_auditor:          { label: "PMO Auditor",        labelAr: "مدقق فني",          color: "bg-amber-100 text-amber-800 border-amber-200" },
+                noc_finance:          { label: "Central Finance",    labelAr: "مدقق مالي مركزي", color: "bg-indigo-100 text-indigo-800 border-indigo-200" },
+                noc_head_of_accounts: { label: "Head of Accounts",   labelAr: "رئيس الحسابات",   color: "bg-rose-100 text-rose-800 border-rose-200" },
+                system_admin:         { label: "NOC Admin",          labelAr: "مدير النظام",     color: "bg-slate-900 text-amber-400 border-slate-700" },
+              };
+              let roleKey = user.role || "";
+              if (!roleKey) {
+                if (user.email?.startsWith("pm@") || user.id?.includes("-pm")) roleKey = "subsidiary_pm";
+                else if (user.email?.startsWith("finance@") || user.id?.includes("-fin")) roleKey = "subsidiary_finance";
+                else if (user.id === "user-noc-pmo") roleKey = "pmo_auditor";
+                else if (user.id === "user-noc-fin") roleKey = "noc_finance";
+                else if (user.id === "user-noc-head") roleKey = "noc_head_of_accounts";
+                else if (user.id === "user-noc-admin") roleKey = "system_admin";
+              }
+              const r = roleMap[roleKey];
+
+              return (
+                <div key={user.id} className={`p-4 space-y-3 ${isRtl ? 'text-right' : 'text-left'}`}>
+                  {/* Identity row */}
+                  <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                    <div className="w-10 h-10 p-1 bg-white dark:bg-[#0a1930] border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm flex items-center justify-center shrink-0">
+                      <img src={getLogoPath(tenantInfo?.logoPath || '', theme)} alt={tenantInfo?.shortName || tenantInfo?.name} className="w-full h-full object-contain" onError={(e) => (e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="%2394a3b8" viewBox="0 0 24 24"><path d="M3 3h18v18H3z"/></svg>')} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">{translateUserName(user.username, isRtl)}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate">{user.email}</div>
+                      <div className="text-[10px] text-slate-400 uppercase tracking-wide font-mono mt-0.5">{tenantInfo?.shortName || companyName} Node</div>
+                    </div>
+                  </div>
+
+                  {/* Badges */}
+                  <div className={`flex items-center flex-wrap gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                    {r && (
+                      <span className={`inline-flex items-center px-2 py-1 rounded font-bold text-[10px] uppercase tracking-wider border ${r.color}`}>
+                        {isRtl ? r.labelAr : r.label}
+                      </span>
+                    )}
+                    {user.status === "ACTIVE" ? (
+                      <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-1 rounded font-bold text-[10px] uppercase">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>{isRtl ? "نشط" : "ACTIVE"}
+                      </span>
+                    ) : user.status === "PENDING_APPROVAL" ? (
+                      <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 border border-amber-300 px-2 py-1 rounded font-bold text-[10px] uppercase">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>{isRtl ? "بانتظار" : "PENDING"}
+                      </span>
+                    ) : user.status === "LOCKED" ? (
+                      <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-800 border border-rose-300 px-2 py-1 rounded font-bold text-[10px] uppercase">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>{isRtl ? "مغلق" : "LOCKED"}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-800 border border-rose-200 px-2 py-1 rounded font-bold text-[10px] uppercase">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>{isRtl ? "معلق" : "SUSPENDED"}
+                      </span>
+                    )}
+                    {user.is_backup === 1 && (
+                      <span className="inline-flex items-center gap-1 bg-sky-100 text-sky-700 border border-sky-200 px-2 py-1 rounded font-bold text-[10px] uppercase">{isRtl ? "نسخة احتياطية" : "BACKUP"}</span>
+                    )}
+                  </div>
+
+                  {/* Action buttons */}
+                  {user.id !== 'user-noc-admin' ? (
+                    <div className={`flex items-center gap-2 flex-wrap ${isRtl ? 'flex-row-reverse' : ''}`}>
+                      <button
+                        onClick={() => handleToggleStatus(user.id)}
+                        title={user.status === "LOCKED" ? (isRtl ? "إلغاء قفل الحساب" : "Unlock Identity") : user.status === "ACTIVE" ? (isRtl ? "تعليق الحساب" : "Suspend Identity") : (isRtl ? "تفعيل الحساب" : "Reactivate Identity")}
+                        className={`p-3 min-w-[44px] min-h-[44px] rounded-lg border transition-colors flex items-center justify-center ${
+                          user.status === "LOCKED" ? "text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-300 dark:bg-amber-950/20 dark:border-amber-700" :
+                          user.status === "ACTIVE" ? "text-rose-600 hover:bg-rose-50 border-rose-200" : "text-emerald-600 hover:bg-emerald-50 border-emerald-200"
+                        }`}
+                      >
+                        {user.status === "LOCKED" ? <UserCheck className="w-4 h-4 text-emerald-600 animate-pulse" /> : user.status === "ACTIVE" ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => { setResetTarget({ id: user.id, username: user.username }); setResetPw({ newPassword: "", confirmPassword: "" }); }}
+                        title={isRtl ? "إعادة تعيين كلمة المرور" : "Reset Password"}
+                        className="p-3 min-w-[44px] min-h-[44px] rounded-lg border border-sky-300 text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950 transition-colors flex items-center justify-center"
+                      >
+                        <Key className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDialog({ isOpen: true, title: isRtl ? "إنهاء الجلسة طارئياً" : "Emergency Session Terminate", message: isRtl ? "هل أنت متأكد من إنهاء جلسة هذا المستخدم وفرض إعادة تعيين كلمة المرور؟" : "Are you sure you want to terminate this user's session and force a password reset?", danger: true, onConfirm: () => { setConfirmDialog(prev => ({ ...prev, isOpen: false })); handleForceReset(user.id); } })}
+                        title={isRtl ? "إنهاء الجلسة طارئياً" : "Emergency Session Terminate"}
+                        className="p-3 min-w-[44px] min-h-[44px] rounded-lg border border-amber-500/30 text-amber-600 hover:bg-amber-50 transition-colors flex items-center justify-center"
+                      >
+                        <AlertTriangle className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDialog({ isOpen: true, title: isRtl ? "تأكيد الحذف" : "Confirm Delete", message: isRtl ? `هل أنت متأكد من حذف ${translateUserName(user.username, true)}?` : `Permanently delete ${translateUserName(user.username, false)}?`, danger: true, onConfirm: () => { setConfirmDialog(prev => ({ ...prev, isOpen: false })); console.log("Delete user", user.id); } })}
+                        title={isRtl ? "حذف الهوية" : "Delete Identity"}
+                        className="p-3 min-w-[44px] min-h-[44px] rounded-lg border border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition-colors flex items-center justify-center"
+                      >
+                        <UserX className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 font-mono italic">ROOT PROTECTED</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── DESKTOP TABLE (hidden on mobile) ── */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
                 <tr className={isRtl ? "text-right" : "text-left"}>
@@ -736,7 +850,6 @@ export default function CentralSecuritySettings({ showToast, lang, currentUser, 
               <tbody className="divide-y divide-slate-100">
                 {filteredUsers.map(user => {
                   const companyName = user.company_name || 'National Oil Corporation (NOC)';
-                  // Use company_id directly from API (most reliable), fallback to text-matching
                   const tenantId = user.company_id || getTenantId(companyName);
                   const tenantInfo = TENANT_CONFIG[tenantId as keyof typeof TENANT_CONFIG] || TENANT_CONFIG['NOC_HQ'];
 
@@ -769,7 +882,6 @@ export default function CentralSecuritySettings({ showToast, lang, currentUser, 
                             noc_head_of_accounts: { label: "Head of Accounts",        labelAr: "رئيس الحسابات",        color: "bg-rose-100 text-rose-800 border-rose-200" },
                             system_admin:         { label: "NOC Admin",              labelAr: "مدير النظام",           color: "bg-slate-900 text-amber-400 border-slate-700 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/50" },
                           };
-                          // Infer role from email pattern if not stored
                           let roleKey = user.role || "";
                           if (!roleKey) {
                             if (user.email?.startsWith("pm@") || user.id?.includes("-pm")) roleKey = "subsidiary_pm";
@@ -894,6 +1006,7 @@ export default function CentralSecuritySettings({ showToast, lang, currentUser, 
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

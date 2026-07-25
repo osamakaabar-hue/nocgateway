@@ -6,6 +6,7 @@ interface TechnicalApprovalFormProps {
   lcData: LcData;
   isRtl: boolean;
   isEditable?: boolean;
+  currentUser?: import('../../types').DemoUser;
   
   // Interactive fields
   projectClassification?: number;
@@ -39,6 +40,7 @@ export default function TechnicalApprovalForm({
   lcData,
   isRtl,
   isEditable = false,
+  currentUser,
   projectClassification = 1,
   setProjectClassification,
   otherClassificationText = "",
@@ -307,60 +309,87 @@ export default function TechnicalApprovalForm({
 
       {/* Approvals & Signatures */}
       <div className="border-t border-black pt-4 mt-6">
-        <h3 className="font-bold mb-4 text-center">{isRtl ? "الاعتمادات والتوقيعات الفنية" : "Technical Approvals & Signatures"}</h3>
-        
-        {isEditable ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50 p-4 rounded border border-slate-200 text-xs">
-            <div className="space-y-2">
-              <label className="block font-bold text-slate-600">{isRtl ? "المدقق الفني / المهندس المختص:" : "Technical Auditor Name:"}</label>
-              <input
-                type="text"
-                value={preparedByName}
-                onChange={(e) => setPreparedByName?.(e.target.value)}
-                className="w-full p-2 border rounded bg-white text-slate-800 font-semibold"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block font-bold text-slate-600">{isRtl ? "مدير الإدارة الفنية المختصة:" : "NOC Dept Manager Name:"}</label>
-              <input
-                type="text"
-                value={approvedByName}
-                onChange={(e) => setApprovedByName?.(e.target.value)}
-                className="w-full p-2 border rounded bg-white text-slate-800 font-semibold"
-              />
-            </div>
-            <div className="col-span-2 space-y-2">
-              <label className="block font-bold text-slate-600">{isRtl ? "الإدارة الفنية المشرفة:" : "NOC Supervising Technical Department:"}</label>
-              <select
-                value={deptType}
-                onChange={(e) => setDeptType?.(e.target.value)}
-                className="w-full p-2 border rounded bg-white text-slate-850 font-semibold cursor-pointer"
-              >
-                <option value="drilling">{isRtl ? "إدارة الحفر وصيانة الآبار" : "Drilling & Well Maintenance Dept"}</option>
-                <option value="projects">{isRtl ? "إدارة المشاريع الرئيسية" : "Major Projects Dept"}</option>
-                <option value="maintenance">{isRtl ? "إدارة هندسة الصيانة والمشاريع الصغرى" : "Maintenance & Small Projects Dept"}</option>
-              </select>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 text-center font-bold text-sm">
-            <div>
-              <p>{isRtl ? "إعداد: المهندس المختص / المدقق الفني" : "Prepared by: Technical Specialist"}</p>
-              <div className="mt-6 border-b border-black w-3/4 mx-auto pb-1 italic text-slate-700">{preparedByName}</div>
-              <p className="mt-2 text-xs text-slate-400 font-mono">E-Signed via Ledger (OK)</p>
-            </div>
-            <div>
-              <p>{isRtl ? `اعتماد: مدير الإدارة المختصة (${getDepartmentLabel(deptType)})` : `Approved by: Manager (${getDepartmentLabel(deptType)})`}</p>
-              <div className="mt-6 border-b border-black w-3/4 mx-auto pb-1 text-emerald-700 flex flex-col items-center justify-center">
-                <span className="border border-emerald-500 bg-emerald-50 px-1 py-0.5 rounded text-[8px] font-mono tracking-tight font-black mb-1 rotate-[-2deg] scale-95">
-                  APPROVED & SECURED
-                </span>
-                <span className="italic">{approvedByName}</span>
-              </div>
-              <p className="mt-2 text-xs text-slate-400 font-mono">E-Signed via Ledger (OK)</p>
-            </div>
-          </div>
-        )}
+        <table className="w-full border-collapse border border-black text-xs text-center mt-2">
+          <thead>
+            <tr className="bg-gray-100 print:bg-transparent">
+              <th className="border border-black p-2 w-1/3">{isRtl ? "الصفة الوظيفية" : "Role / Title"}</th>
+              <th className="border border-black p-2 w-1/3">{isRtl ? "اسم المعتمد" : "Signatory Name"}</th>
+              <th className="border border-black p-2 w-1/3">{isRtl ? "التوقيع والختم الإلكتروني" : "E-Signature & Hash Stamp"}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="border border-black p-2 font-bold bg-gray-50 print:bg-transparent">
+                {isRtl ? "إعداد: المهندس المختص / المدقق الفني" : "Prepared by: Technical Specialist"}
+              </td>
+              <td className="border border-black p-2 font-semibold">
+                {isEditable ? (
+                  <input
+                    type="text"
+                    value={preparedByName}
+                    onChange={(e) => setPreparedByName?.(e.target.value)}
+                    className="w-full text-center outline-none bg-slate-50 focus:bg-white p-1 rounded font-bold"
+                  />
+                ) : (
+                  preparedByName
+                )}
+              </td>
+              <td className="border border-black p-2">
+                {preparedByName ? (
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="text-[9px] font-mono border border-emerald-500 bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-black scale-95 rotate-[-2deg]">
+                      TECHNICAL AUDIT VERIFIED
+                    </span>
+                    <span className="italic text-xs text-emerald-700 font-bold mt-0.5">{preparedByName}</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setPreparedByName?.(currentUser?.name || "Eng. Tarek El-Fassi")}
+                    className="bg-amber-100 hover:bg-amber-200 text-amber-800 text-[11px] font-bold py-1 px-3 rounded border border-amber-300 print:hidden transition-colors"
+                  >
+                    {isRtl ? "توقيع إلكتروني" : "E-Sign"}
+                  </button>
+                )}
+              </td>
+            </tr>
+            <tr>
+              <td className="border border-black p-2 font-bold bg-gray-50 print:bg-transparent">
+                {isRtl ? `اعتماد: مدير الإدارة المختصة (${getDepartmentLabel(deptType)})` : `Approved by: Manager (${getDepartmentLabel(deptType)})`}
+              </td>
+              <td className="border border-black p-2 font-semibold">
+                {isEditable ? (
+                  <input
+                    type="text"
+                    value={approvedByName}
+                    onChange={(e) => setApprovedByName?.(e.target.value)}
+                    className="w-full text-center outline-none bg-slate-50 focus:bg-white p-1 rounded font-bold text-emerald-700"
+                  />
+                ) : (
+                  approvedByName
+                )}
+              </td>
+              <td className="border border-black p-2">
+                {approvedByName ? (
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="text-[9px] font-mono border border-emerald-500 bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-black scale-95 rotate-[-2deg]">
+                      PMO SIGNATURE ANCHORED
+                    </span>
+                    <span className="italic text-xs text-emerald-700 font-bold mt-0.5">{approvedByName}</span>
+                  </div>
+                ) : (currentUser?.role === 'pmo_auditor' || currentUser?.role === 'system_admin') ? (
+                  <button
+                    onClick={() => setApprovedByName?.("Eng. Nadia Al-Kout")}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold py-1 px-3 rounded shadow-sm print:hidden transition-colors"
+                  >
+                    {isRtl ? "توقيع إلكتروني (نادية الكوت)" : "E-Sign (Nadia Al-Kout)"}
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-slate-400 font-bold uppercase italic">{isRtl ? "مخصص لـ م. نادية الكوت" : "NOC PMO Auditor Only"}</span>
+                )}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   );

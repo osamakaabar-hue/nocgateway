@@ -168,5 +168,5 @@ export const translations = {
 };
 
 export function t(key: keyof typeof translations["en"], lang: Lang): string {
-  return translations[lang][key] || translations["en"][key] || key;
+  return (translations[lang] as any)[key] || translations["en"][key] || key;
 }

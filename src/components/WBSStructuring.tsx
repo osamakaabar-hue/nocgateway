@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Claim } from "../types";
+import { Claim, LcData } from "../types";
+import TechnicalApprovalForm from "./forms/TechnicalApprovalForm";
 import {
   FolderKanban,
   GitFork,
@@ -44,6 +45,8 @@ export interface WBSNode {
   endDate?: string;
   status?: "not_started" | "in_progress" | "completed";
   phase?: "Engineering" | "Procurement" | "Construction" | "Commissioning" | "Project Management";
+  dependencies?: string[];
+  form4Submitted?: boolean;
 }
 
 export function getDefaultWBS(companyId: string): WBSNode[] {
@@ -533,8 +536,11 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
   const isSubsidiary = currentUser && currentUser.companyId !== "NOC_HQ";
   const defaultProjectId = isSubsidiary ? currentUser.companyId : "WAHA";
 
-  // Check if current user is the NOC PM (role pmo_auditor)
-  const isNocPm = activeRole === "pmo_auditor";
+  // RBAC Role flags
+  // isPmoAuditor: NOC PMO Technical Auditor — READ-ONLY on WBS. Must never mutate WBS structure.
+  const isPmoAuditor = activeRole === "pmo_auditor";
+  // isNocPm is intentionally NOT pmo_auditor — only system_admin or noc_head_of_accounts may have legacy admin WBS access
+  const isNocPm = false; // Removed: pmo_auditor is read-only by RBAC policy
   const isSubsidiaryPm = activeRole === "subsidiary_pm";
 
   // Dynamic Projects List
@@ -592,7 +598,9 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
   // Default to draft if status is missing to support legacy local storage data
   const currentProjectStatus = currentProject?.status || "draft";
 
-  const canEditWbs = isNocPm || (isSubsidiaryPm && currentProjectStatus === "draft");
+  // RBAC POLICY: pmo_auditor is EXPLICITLY EXCLUDED from write access.
+  // Only subsidiary_pm in draft status can mutate WBS elements.
+  const canEditWbs = !isPmoAuditor && (isSubsidiaryPm && currentProjectStatus === "draft");
 
   // Load WBS from localStorage with fallback to enriched presets
   const [wbsData, setWbsData] = useState<Record<string, WBSNode[]>>(() => {
@@ -803,6 +811,38 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
 
   // Edit Modal state
   const [editingNode, setEditingNode] = useState<WBSNode | null>(null);
+  const [form4Node, setForm4Node] = useState<WBSNode | null>(null);
+  const [form4State, setForm4State] = useState({
+    projectClassification: 0,
+    otherClassificationText: "",
+    isConformant: true,
+    isObjectionFree: true,
+    technicalNotes: "",
+    recommendation: "approve" as "approve" | "partial" | "reject",
+    partialValue: "",
+    preparedByName: "",
+    approvedByName: "",
+    deptType: "engineering"
+  });
+
+  const handleForm4Submit = () => {
+    if (!form4Node) return;
+    
+    const updatedList = activeNodes.map(node => {
+      if (node.id === form4Node.id) {
+        return { ...node, form4Submitted: true };
+      }
+      return node;
+    });
+
+    setWbsData({
+      ...wbsData,
+      [selectedProjectId]: updatedList
+    });
+
+    setForm4Node(null);
+    showToast(isRtl ? "تم إرسال نموذج الاعتماد الفني بنجاح." : "Form 4 Technical Approval submitted successfully to NOC PMO.", "success");
+  };
 
   const activeNodes = wbsData[selectedProjectId] || getDefaultWBS(selectedProjectId);
 
@@ -825,8 +865,13 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
       return;
     }
 
+    // RBAC Gate: pmo_auditor is strictly read-only
+    if (isPmoAuditor) {
+      showToast(isRtl ? "محظور: صلاحية المدقق الفني للمكتب تقتصر على القراءة والمتابعة فقط." : "Access Denied [403]: Your role (PMO Auditor) is read-only. WBS mutations are forbidden.", "error");
+      return;
+    }
     if (!canEditWbs) {
-      showToast("Unauthorized: Only NOC PMO Technical Auditors and Subsidiary PMs can create WBS elements.", "error");
+      showToast(isRtl ? "غير مصرح: لا يمكنك تعديل هيكل العمل في هذه الحالة." : "Unauthorized: WBS edits are not permitted for your current role or project status.", "error");
       return;
     }
 
@@ -873,8 +918,13 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
     e.preventDefault();
     if (!editingNode) return;
 
+    // RBAC Gate: pmo_auditor is strictly read-only
+    if (isPmoAuditor) {
+      showToast(isRtl ? "محظور: صلاحية المدقق الفني للمكتب تقتصر على القراءة والمتابعة فقط." : "Access Denied [403]: PMO Auditor role cannot modify WBS elements.", "error");
+      return;
+    }
     if (!canEditWbs) {
-      showToast("Unauthorized: WBS structure is managed only by authorized PMs.", "error");
+      showToast(isRtl ? "غير مصرح: هيكل العمل محمي." : "Unauthorized: WBS structure is managed only by authorized PMs.", "error");
       return;
     }
 
@@ -899,8 +949,13 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
 
   // Delete WBS Node
   const handleDeleteNode = (nodeId: string, code: string) => {
+    // RBAC Gate: pmo_auditor is strictly read-only
+    if (isPmoAuditor) {
+      showToast(isRtl ? "محظور: لا يمكنك حذف عناصر هيكل العمل بصفتك مدققاً فنياً." : "Access Denied [403]: PMO Auditor role cannot delete WBS nodes.", "error");
+      return;
+    }
     if (!canEditWbs) {
-      showToast("Unauthorized: WBS editing is locked.", "error");
+      showToast(isRtl ? "غير مصرح: تعديل هيكل العمل محظور." : "Unauthorized: WBS editing is locked.", "error");
       return;
     }
 
@@ -1175,7 +1230,7 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
         </div>
 
         {/* View Selection (Sub-Tabs) */}
-        <div className={`flex border-b border-slate-200 gap-1 mt-4 ${isRtl ? "flex-row-reverse" : ""}`}>
+        <div className={`flex border-b border-slate-200 gap-1 mt-4 overflow-x-auto ${isRtl ? "flex-row-reverse" : ""}`}>
           <button
             onClick={() => setActiveSubTab("hierarchy")}
             className={`px-4 py-2.5 text-xs font-black border-b-2 flex items-center gap-1.5 transition-all ${
@@ -1226,7 +1281,163 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* ── MOBILE CARDS (hidden on md+) ── */}
+            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {activeNodes.length > 0 ? (
+                activeNodes.map((node) => (
+                  <div
+                    key={node.id}
+                    className={`p-4 space-y-3 ${
+                      node.level === 1
+                        ? "bg-white dark:bg-[#0a1930]"
+                        : node.level === 2
+                        ? "bg-slate-50/20 dark:bg-slate-900/40"
+                        : "bg-slate-50/30 dark:bg-slate-900/20"
+                    } ${isRtl ? 'text-right' : 'text-left'}`}
+                  >
+                    {/* Code + Name */}
+                    <div className={`flex items-start gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-black shrink-0 mt-0.5 ${
+                        node.level === 1 ? 'bg-slate-900 dark:bg-slate-800 text-white' : 'bg-slate-200 dark:bg-slate-850 text-slate-700 dark:text-slate-300'
+                      }`}>{node.code}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className={`flex items-center gap-1.5 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                          {node.isMilestone && <Milestone className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                          <span className={`text-sm break-words ${node.level === 1 ? 'font-black text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400 font-medium'}`}>
+                            {getNodeNameTranslation(node.name)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Metadata grid */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">{isRtl ? "النوع" : "Type"}</div>
+                        <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                          node.isMilestone ? 'bg-amber-100 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        }`}>
+                          {node.isMilestone ? (isRtl ? "معلم رئيسي" : "Milestone") : (isRtl ? "حزمة عمل" : "Work Node")}
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">{isRtl ? "المرحلة" : "Phase"}</div>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${getPhaseBadgeColor(node.phase)}`}>
+                          {isRtl ? (
+                            node.phase === "Engineering" ? "الهندسة" :
+                            node.phase === "Procurement" ? "التوريد" :
+                            node.phase === "Construction" ? "الإنشاءات" :
+                            node.phase === "Commissioning" ? "التشغيل" : "إدارة"
+                          ) : (node.phase || "Construction")}
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">{isRtl ? "الميزانية" : "Budget (PV)"}</div>
+                        <div className="font-bold font-mono text-slate-800 dark:text-slate-200 break-all">
+                          {node.isMilestone ? "—" : `€${node.budget.toLocaleString()}`}
+                        </div>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">{isRtl ? "الحالة" : "Status"}</div>
+                        <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${
+                          node.status === "completed" || node.progress === 100
+                            ? "bg-emerald-100 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60"
+                            : node.status === "in_progress"
+                            ? "bg-amber-100 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                        }`}>
+                          {node.progress === 100 ? (isRtl ? "مكتمل" : "Completed") : node.status === "in_progress" ? (isRtl ? "قيد التنفيذ" : "In Progress") : (isRtl ? "لم يبدأ" : "Not Started")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Dates */}
+                    {node.startDate && (
+                      <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                        {node.isMilestone
+                          ? <span className="font-bold text-amber-600">{node.startDate}</span>
+                          : <span>{node.startDate} {isRtl ? "إلى" : "to"} {node.endDate}</span>
+                        }
+                      </div>
+                    )}
+
+                    {/* Progress */}
+                    <div>
+                      <div className={`flex items-center gap-2 mb-1 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                        <span className="text-[10px] font-bold text-slate-400">{isRtl ? "التقدم" : "Progress"}</span>
+                        <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-200">{node.progress}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
+                        <div className={`h-full transition-all ${node.progress === 100 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${node.progress}%` }} />
+                      </div>
+                    </div>
+
+                    {/* Actions — RBAC: hidden entirely for pmo_auditor (read-only role) */}
+                    {!isPmoAuditor && canEditWbs && (
+                      <div className={`flex items-center gap-2 pt-1 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                        <button
+                          onClick={() => setEditingNode(node)}
+                          className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-xs font-bold border border-slate-200 dark:border-slate-700"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          {isRtl ? "تعديل" : "Edit"}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteNode(node.id, node.code)}
+                          className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-lg bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-900/30 text-rose-500 hover:text-rose-700 transition-all text-xs font-bold border border-rose-100 dark:border-rose-900/40"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          {isRtl ? "حذف" : "Delete"}
+                        </button>
+                      </div>
+                    )}
+                    {/* Submit Form 4 Mobile */}
+                    {isSubsidiaryPm && node.isMilestone && (node.progress === 100 || node.status === "completed") && (!node.dependencies || node.dependencies.length === 0) && !node.form4Submitted && (
+                      <div className={`flex items-center pt-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                        <button
+                          onClick={() => setForm4Node(node)}
+                          className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs w-full justify-center transition-all"
+                        >
+                          {isRtl ? "تقديم نموذج 4 للاعتماد الفني" : "Submit Form 4 Technical Approval"}
+                        </button>
+                      </div>
+                    )}
+                    {node.form4Submitted && (
+                      <div className={`flex items-center gap-1 pt-2 text-indigo-500 font-bold text-xs ${isRtl ? 'flex-row-reverse' : ''}`}>
+                        <CheckCircle2 className="w-4 h-4" /> Form 4 Submitted
+                      </div>
+                    )}
+                    {/* pmo_auditor sees a read-only badge in mobile view */}
+                    {isPmoAuditor && (
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 px-2 py-1 rounded-full">
+                          <Eye className="w-3 h-3" />
+                          {isRtl ? "قراءة فقط" : "Read-Only Access"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="p-8 text-center">
+                  <AlertCircle className="w-9 h-9 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {isRtl ? "لا توجد عناصر هيكل عمل مسجلة لهذا المشروع." : "No WBS nodes registered for this project."}
+                  </h4>
+                  {canEditWbs && (
+                    <button
+                      onClick={() => setIsAddingNode(true)}
+                      className="mt-3 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs py-2.5 px-4 min-h-[44px] rounded-lg border border-transparent dark:border-slate-700"
+                    >
+                      {isRtl ? "أنشئ العنصر الأول الأساسي" : "Create First Node"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ── DESKTOP TABLE (hidden on mobile) ── */}
+            <div className="hidden md:block overflow-x-auto">
               <table className={`w-full border-collapse ${isRtl ? "text-right" : "text-left"}`}>
                 <thead>
                   <tr className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 font-sans text-slate-400 dark:text-slate-500">
@@ -1254,9 +1465,20 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
                     <th className="p-3 text-[10px] font-black w-32 text-center">
                       {isRtl ? "الإنجاز الفعلي" : "Progress"}
                     </th>
-                    <th className="p-3 text-[10px] font-black w-24 text-center">
-                      {isRtl ? "خيارات" : "Actions"}
-                    </th>
+                    {/* RBAC: Actions column header is hidden for pmo_auditor */}
+                    {!isPmoAuditor && (
+                      <th className="p-3 text-[10px] font-black w-24 text-center">
+                        {isRtl ? "خيارات" : "Actions"}
+                      </th>
+                    )}
+                    {isPmoAuditor && (
+                      <th className="p-3 text-[10px] font-black w-24 text-center text-sky-500">
+                        <span className="inline-flex items-center gap-1">
+                          <Eye className="w-3 h-3" />
+                          {isRtl ? "الصلاحية" : "Access"}
+                        </span>
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -1284,7 +1506,7 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
                           <td className="p-3 text-xs text-slate-900 dark:text-white">
                             <div className="flex items-center gap-1.5">
                               {node.isMilestone && <Milestone className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
-                              <span className={node.level === 1 ? "font-black text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-400 font-medium"}>
+                              <span className={`break-words ${node.level === 1 ? "font-black text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-400 font-medium"}`}>
                                 {getNodeNameTranslation(node.name)}
                               </span>
                             </div>
@@ -1354,21 +1576,30 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
                             </div>
                           </td>
 
-                          {/* Actions */}
+                          {/* Actions — RBAC: column fully hidden for pmo_auditor (read-only by policy) */}
                           <td className="p-3 text-center">
                             <div className="flex items-center gap-1.5 justify-center">
-                              {canEditWbs ? (
+                              {isPmoAuditor ? (
+                                /* Read-Only badge shown in place of edit/delete controls */
+                                <span
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 px-2 py-1 rounded-full"
+                                  title={isRtl ? "صلاحية المشاهدة والمتابعة فقط — لا يمكن إجراء أي تعديلات" : "Read-Only Access — Mutations are forbidden for PMO Auditor role"}
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  {isRtl ? "متابعة" : "View Only"}
+                                </span>
+                              ) : canEditWbs ? (
                                 <>
                                   <button
                                     onClick={() => setEditingNode(node)}
-                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                                    className="p-2 min-w-[36px] min-h-[36px] hover:bg-slate-100 dark:hover:bg-slate-800 rounded flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
                                     title={isRtl ? "تعديل تفاصيل عنصر الهيكل" : "Edit entire WBS Node configuration"}
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteNode(node.id, node.code)}
-                                    className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded text-rose-400 hover:text-rose-600 transition-all border border-transparent hover:border-rose-100 dark:hover:border-rose-900/40"
+                                    className="p-2 min-w-[36px] min-h-[36px] hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded flex items-center justify-center text-rose-400 hover:text-rose-600 transition-all border border-transparent hover:border-rose-100 dark:hover:border-rose-900/40"
                                     title={isRtl ? "حذف العنصر" : "Delete Node"}
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1377,6 +1608,21 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
                               ) : (
                                 <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 justify-center">
                                   <Lock className="w-3 h-3 text-slate-300 dark:text-slate-700" /> {isRtl ? "مغلق" : "Locked"}
+                                </span>
+                              )}
+                              
+                              {/* Submit Form 4 Button */}
+                              {isSubsidiaryPm && node.isMilestone && (node.progress === 100 || node.status === "completed") && (!node.dependencies || node.dependencies.length === 0) && !node.form4Submitted && (
+                                <button
+                                  onClick={() => setForm4Node(node)}
+                                  className="ml-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] py-1 px-2 rounded-md transition-colors whitespace-nowrap"
+                                >
+                                  {isRtl ? "تقديم نموذج 4" : "Submit Form 4"}
+                                </button>
+                              )}
+                              {node.form4Submitted && (
+                                <span className="ml-2 text-[10px] text-indigo-500 font-bold whitespace-nowrap flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" /> Form 4 Submitted
                                 </span>
                               )}
                             </div>
@@ -2195,6 +2441,86 @@ export default function WBSStructuring({ claims, showToast, currentUser, activeR
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Form 4 Technical Approval Modal */}
+        {form4Node && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className={`bg-slate-50 w-full max-w-5xl rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8 flex flex-col max-h-[90vh] ${isRtl ? "text-right" : "text-left"}`}>
+              <div className={`p-4 bg-slate-900 text-white flex justify-between items-center shrink-0 ${isRtl ? "flex-row-reverse" : ""}`}>
+                <h4 className="font-bold text-sm flex items-center gap-2">
+                  <CheckSquare className="w-5 h-5 text-indigo-400" />
+                  {isRtl ? `تقديم الاعتماد الفني (نموذج 4) للمعلم: ${form4Node.name}` : `Submit Technical Approval (Form 4) for Milestone: ${form4Node.name}`}
+                </h4>
+                <button
+                  onClick={() => setForm4Node(null)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-0 overflow-y-auto flex-1">
+                <TechnicalApprovalForm
+                  claim={{
+                    id: `form4-${form4Node.id}`,
+                    claim_reference: `FORM4-${form4Node.code}`,
+                    project_id: selectedProjectId,
+                    amount: form4Node.budget || 0,
+                    currency: "EUR",
+                    status: "PENDING_NOC_APPROVAL",
+                    category: "Milestone Completion",
+                    date_submitted: new Date().toISOString(),
+                    contractor_name: currentProject?.name || "Contractor",
+                    description: `Milestone: ${form4Node.name}`,
+                    is_form4: true
+                  } as unknown as Claim}
+                  lcData={{
+                    localWorkforcePercentage: 0,
+                    localProcurementValue: 0,
+                    localSubcontractorCount: 0,
+                    score: 0
+                  } as unknown as LcData}
+                  isRtl={isRtl}
+                  isEditable={true}
+                  projectClassification={form4State.projectClassification}
+                  setProjectClassification={(v) => setForm4State(s => ({ ...s, projectClassification: v }))}
+                  otherClassificationText={form4State.otherClassificationText}
+                  setOtherClassificationText={(v) => setForm4State(s => ({ ...s, otherClassificationText: v }))}
+                  isConformant={form4State.isConformant}
+                  setIsConformant={(v) => setForm4State(s => ({ ...s, isConformant: v }))}
+                  isObjectionFree={form4State.isObjectionFree}
+                  setIsObjectionFree={(v) => setForm4State(s => ({ ...s, isObjectionFree: v }))}
+                  technicalNotes={form4State.technicalNotes}
+                  setTechnicalNotes={(v) => setForm4State(s => ({ ...s, technicalNotes: v }))}
+                  recommendation={form4State.recommendation}
+                  setRecommendation={(v) => setForm4State(s => ({ ...s, recommendation: v }))}
+                  partialValue={form4State.partialValue}
+                  setPartialValue={(v) => setForm4State(s => ({ ...s, partialValue: v }))}
+                  preparedByName={form4State.preparedByName}
+                  setPreparedByName={(v) => setForm4State(s => ({ ...s, preparedByName: v }))}
+                  approvedByName={form4State.approvedByName}
+                  setApprovedByName={(v) => setForm4State(s => ({ ...s, approvedByName: v }))}
+                  deptType={form4State.deptType}
+                  setDeptType={(v) => setForm4State(s => ({ ...s, deptType: v }))}
+                />
+              </div>
+              <div className={`p-4 bg-white border-t border-slate-200 flex justify-end gap-3 shrink-0 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                <button
+                  onClick={() => setForm4Node(null)}
+                  className="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+                >
+                  {isRtl ? "إلغاء الأمر" : "Cancel"}
+                </button>
+                <button
+                  onClick={handleForm4Submit}
+                  className="px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-lg transition-colors flex items-center gap-2"
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                  {isRtl ? "إرسال إلى إدارة المؤسسة (NOC PMO)" : "Submit to NOC PMO"}
+                </button>
+              </div>
             </div>
           </div>
         )}

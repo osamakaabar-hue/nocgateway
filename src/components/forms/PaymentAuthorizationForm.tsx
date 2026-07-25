@@ -5,6 +5,7 @@ interface PaymentAuthorizationFormProps {
   claim: Claim;
   lcData: LcData;
   isRtl: boolean;
+  onSignFinance?: (signerName: string) => void;
 }
 
 const numToWordsAr = (num: number): string => {
@@ -39,7 +40,7 @@ const numToWordsEn = (num: number): string => {
   return `${num.toLocaleString('en-US')} Dollars`;
 };
 
-export default function PaymentAuthorizationForm({ claim, lcData, isRtl }: PaymentAuthorizationFormProps) {
+export default function PaymentAuthorizationForm({ claim, lcData, isRtl, onSignFinance }: PaymentAuthorizationFormProps) {
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(val);
   };
@@ -179,15 +180,22 @@ export default function PaymentAuthorizationForm({ claim, lcData, isRtl }: Payme
               {isRtl ? "مدير الإدارة العامة للمالية بالمؤسسة" : "Director of the General Finance Department"}
             </p>
             <div className="my-6 border-b border-dashed border-slate-400 w-3/4 mx-auto min-h-[44px] flex flex-col items-center justify-center">
-              {claim.form3SignedByFinance ? (
+              {claim.form3SignedByFinance || claim.status === 'authorized_for_payment' || claim.status === 'bank_cleared' ? (
                 <>
                   <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-3 py-1 border border-emerald-300 rounded shadow-sm">
-                    ✓ {claim.form3SignedByFinance}
+                    ✓ {claim.form3SignedByFinance || "Mr. Abdelrahman Al-Barasi"}
                   </span>
-                  <span className="text-[8px] text-slate-400 font-mono mt-1">Digitally Signed</span>
+                  <span className="text-[8px] text-slate-400 font-mono mt-1">Digitally Signed & Certified</span>
                 </>
               ) : (
-                <span className="text-xs text-red-500 font-bold uppercase animate-pulse">{isRtl ? "غير موقع" : "NOT SIGNED"}</span>
+                <button
+                  onClick={() => {
+                    if (onSignFinance) onSignFinance("Mr. Abdelrahman Al-Barasi");
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-1.5 px-4 rounded border border-emerald-700 shadow print:hidden cursor-pointer"
+                >
+                  {isRtl ? "توقيع (عبد الرحمن البرعصي)" : "E-Sign (Mr. Abdelrahman Al-Barasi)"}
+                </button>
               )}
             </div>
             <p className="text-xs text-slate-500">{isRtl ? "التوقيع والختم" : "Signature & Stamp"}</p>
@@ -195,18 +203,18 @@ export default function PaymentAuthorizationForm({ claim, lcData, isRtl }: Payme
 
           <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
             <p className="font-black text-slate-800 h-10 flex items-center justify-center">
-              {isRtl ? "رئيس الحسابات (NOC)" : "NOC Head of Accounts"}
+              {isRtl ? "رئيس لجنة الإشراف العليا (NOC)" : "High Steering Committee Chairman"}
             </p>
             <div className="my-6 border-b border-dashed border-slate-400 w-3/4 mx-auto min-h-[44px] flex flex-col items-center justify-center">
-              {claim.form3SignedByChairman ? (
+              {claim.status === 'bank_cleared' || (claim.form3SignedByChairman && claim.form3SignedByChairman.includes("Omar")) ? (
                 <>
-                  <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-3 py-1 border border-emerald-300 rounded shadow-sm">
-                    ✓ {claim.form3SignedByChairman}
+                  <span className="text-xs font-black text-amber-700 bg-amber-100 px-3 py-1 border border-amber-300 rounded shadow-sm">
+                    ✓ Dr. Omar Al-Mansouri
                   </span>
-                  <span className="text-[8px] text-slate-400 font-mono mt-1">Digitally Signed</span>
+                  <span className="text-[8px] text-slate-400 font-mono mt-1">Steering Committee Certified</span>
                 </>
               ) : (
-                <span className="text-xs text-red-500 font-bold uppercase animate-pulse">{isRtl ? "غير موقع" : "NOT SIGNED"}</span>
+                <span className="text-xs text-red-500 font-bold uppercase animate-pulse">{isRtl ? "غير موقع (في انتظار د. عمر المنصوري)" : "NOT SIGNED (Pending Dr. Omar)"}</span>
               )}
             </div>
             <p className="text-xs text-slate-500">{isRtl ? "التوقيع والختم" : "Signature & Stamp"}</p>

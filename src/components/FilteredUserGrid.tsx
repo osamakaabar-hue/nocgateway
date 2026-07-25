@@ -122,11 +122,11 @@ const getArabicDescription = (user: DemoUser) => {
   if (DESC_AR[user.id]) return DESC_AR[user.id];
   
   if (user.role === "subsidiary_pm") {
-    const companyAr = TENANT_AR[user.companyId]?.name || user.company;
+    const companyAr = TENANT_AR[user.companyId as keyof typeof TENANT_AR]?.name || user.company;
     return `يشرف على إدارة المشاريع الفنية والهندسية الميدانية لـ ${companyAr}.`;
   }
   if (user.role === "subsidiary_finance") {
-    const companyAr = TENANT_AR[user.companyId]?.name || user.company;
+    const companyAr = TENANT_AR[user.companyId as keyof typeof TENANT_AR]?.name || user.company;
     return `يتولى إدارة الفواتير وإجراءات المطابقة والرقابة المالية لـ ${companyAr}.`;
   }
   return user.description;

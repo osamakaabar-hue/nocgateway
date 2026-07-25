@@ -20,7 +20,8 @@ import {
   ShieldCheck,
   Building2,
   Landmark,
-  ExternalLink
+  ExternalLink,
+  Menu
 } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
 import ThemeToggle from "./ThemeToggle";
@@ -43,6 +44,7 @@ interface TopNavProps {
   onMarkAllRead?: () => void;
   onClearHistory?: () => void;
   onViewAllNotifications?: () => void;
+  onToggleMobileMenu?: () => void;
 }
 
 export default function TopNav({
@@ -58,7 +60,8 @@ export default function TopNav({
   onMarkRead,
   onMarkAllRead,
   onClearHistory,
-  onViewAllNotifications
+  onViewAllNotifications,
+  onToggleMobileMenu
 }: TopNavProps) {
   const isRtl = lang === "ar";
   const { theme } = useTheme();
@@ -198,7 +201,7 @@ export default function TopNav({
 
   // --- Branding Translation Helpers ---
   const tenantId = currentUser?.companyId || "NOC_HQ";
-  const tenant = TENANT_CONFIG[tenantId] || TENANT_CONFIG["NOC_HQ"];
+  const tenant = TENANT_CONFIG[tenantId as keyof typeof TENANT_CONFIG] || TENANT_CONFIG["NOC_HQ"];
   const isNoc = tenantId === "NOC_HQ";
 
   const getCompanyTranslation = (name: string) => {
@@ -262,6 +265,14 @@ export default function TopNav({
     >
       {/* --- Left section: Logo & Node info --- */}
       <div className={`flex items-center gap-4 shrink-0 ${isRtl ? "flex-row-reverse" : ""}`}>
+        {onToggleMobileMenu && (
+          <button 
+            onClick={onToggleMobileMenu}
+            className={`md:hidden p-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white ${isRtl ? "-mr-2" : "-ml-2"}`}
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        )}
         {isNoc ? (
           <NocLogo className="w-12 h-12 shrink-0" />
         ) : (
@@ -295,7 +306,7 @@ export default function TopNav({
 
       {/* --- Centre section: Global Search --- */}
       {currentUser && (
-        <div className="flex-1 flex justify-center px-2 min-w-0" ref={searchRef}>
+        <div className="hidden md:flex flex-1 justify-center px-2 min-w-0" ref={searchRef}>
           <div className="relative w-full max-w-xl">
             <div
               className={`flex items-center gap-2 rounded-lg border bg-slate-800 dark:bg-slate-900 border-slate-700 dark:border-slate-800 px-3 py-2 transition-all ${
@@ -532,7 +543,7 @@ export default function TopNav({
 
         <ThemeToggle lang={lang} />
 
-        <div className={`flex flex-col ${isRtl ? "items-start" : "items-end"}`}>
+        <div className={`hidden sm:flex flex-col ${isRtl ? "items-start" : "items-end"}`}>
           <span className="text-slate-900 dark:text-white text-sm font-bold leading-tight">
             {isRtl && currentUser?.nameAr ? currentUser.nameAr : (currentUser?.name || "Visitor")}
           </span>

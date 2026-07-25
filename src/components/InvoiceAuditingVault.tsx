@@ -570,10 +570,10 @@ export default function InvoiceAuditingVault({
       </div>
 
       {/* Split Pane Workspace */}
-      <div className={`flex-1 flex overflow-hidden bg-slate-100 ${isRtl ? "flex-row-reverse" : ""}`}>
+      <div className={`flex-1 flex flex-col md:flex-row overflow-hidden bg-slate-100 ${isRtl ? "md:flex-row-reverse" : ""}`}>
         
         {/* Left List of Invoices */}
-        <div className={`w-96 bg-white flex flex-col shrink-0 ${isRtl ? "border-l border-r-0" : "border-r border-l-0"}`}>
+        <div className={`w-full md:w-96 h-[40vh] md:h-auto bg-white flex flex-col shrink-0 border-b md:border-b-0 ${isRtl ? "md:border-l md:border-r-0" : "md:border-r md:border-l-0"}`}>
           <div className="p-4 border-b border-slate-200 bg-slate-50 space-y-2.5">
             <div className={`flex justify-between items-center ${isRtl ? "flex-row-reverse" : ""}`}>
               <h3 className="text-xs font-black text-slate-900 uppercase">
@@ -694,7 +694,7 @@ export default function InvoiceAuditingVault({
                     {isRtl ? "حدود الفاتورة القانونية بالقيمة المكتسبة" : "EVM Legal Invoice Limits"}
                   </h3>
 
-                  <div className={`grid grid-cols-2 gap-4 ${isRtl ? "text-right" : "text-left"}`}>
+                  <div className={`grid grid-cols-2 lg:grid-cols-3 gap-4 ${isRtl ? "text-right" : "text-left"}`}>
                     <div>
                       <div className="text-[10px] text-slate-400 font-bold uppercase">{isRtl ? "نسبة الإنجاز المعتمدة" : "Certified Progress"}</div>
                       <div className="text-lg font-black text-slate-900 font-mono mt-0.5">{activeInvoiceClaim.claimedProgress.toFixed(1)}%</div>
@@ -707,6 +707,15 @@ export default function InvoiceAuditingVault({
                       </div>
                       <p className="text-[9px] text-slate-500">{isRtl ? "أقصى قيمة مسموح بها للفاتورة التجارية في هذه الدورة." : "Maximum allowed commercial invoice value."}</p>
                     </div>
+                    {activeInvoiceClaim.retentionPercentage !== undefined && activeInvoiceClaim.retentionPercentage > 0 && (
+                      <div className="bg-orange-50 p-2 rounded border border-orange-100">
+                        <div className="text-[10px] text-orange-600 font-bold uppercase">{isRtl ? "احتجاز الضمان (%)" : "Retention Holdback"}</div>
+                        <div className="text-lg font-black text-orange-600 font-mono mt-0.5">
+                          {activeInvoiceClaim.retentionPercentage}%
+                        </div>
+                        <p className="text-[9px] text-orange-700/70">{isRtl ? "تستحق الدفع بعد انتهاء فترة ضمان العيوب." : `Payable after ${activeInvoiceClaim.defectsLiabilityPeriodMonths || 12}M defects liability period.`}</p>
+                      </div>
+                    )}
                   </div>
 
                   {activeInvoiceClaim.invoiceNumber ? (
@@ -719,6 +728,14 @@ export default function InvoiceAuditingVault({
                         <span className="text-slate-500 font-semibold">{isRtl ? "قيمة الفاتورة المقدمة:" : "Submitted Invoice Value:"}</span>
                         <span className="font-mono font-bold text-slate-900">€{(activeInvoiceClaim.invoiceAmount || 0).toLocaleString()}</span>
                       </div>
+                      {activeInvoiceClaim.retentionPercentage !== undefined && activeInvoiceClaim.retentionPercentage > 0 && (
+                        <div className={`flex justify-between items-center text-xs mt-1.5 pt-1.5 border-t border-slate-200 ${isRtl ? "flex-row-reverse" : ""}`}>
+                          <span className="text-orange-600 font-semibold">{isRtl ? "قيمة الاحتجاز المقتطعة:" : "Retention Withheld:"}</span>
+                          <span className="font-mono font-bold text-orange-600">
+                            -€{Math.round(((activeInvoiceClaim.invoiceAmount || 0) * activeInvoiceClaim.retentionPercentage) / 100).toLocaleString()}
+                          </span>
+                        </div>
+                      )}
                       
                       {/* Overrun Audit Calculation */}
                       <div className={`border-t border-dashed border-slate-200 mt-2 pt-2 flex justify-between items-center ${isRtl ? "flex-row-reverse" : ""}`}>
@@ -898,7 +915,7 @@ export default function InvoiceAuditingVault({
                     <span>{isRtl ? `ملفات ومستندات الإثبات والفواتير الموقعة (${activeInvoiceClaim.documents.length})` : `Signed Evidence & Invoice Files (${activeInvoiceClaim.documents.length})`}</span>
                   </div>
                   
-                  {(currentUser?.role === "subsidiary_pm" || currentUser?.role === "subsidiary_finance") && activeInvoiceClaim.companyId === currentUser?.companyId && (
+                  {(currentUser?.role === "subsidiary_pm" || currentUser?.role === "system_admin") && activeInvoiceClaim.companyId === currentUser?.companyId && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1349,7 +1366,8 @@ export default function InvoiceAuditingVault({
         onClose={() => setShowForm2Modal(false)}
         isRtl={isRtl}
         isDark={false}
-        onGenerate={() => {
+        claimCode={targetForm2Claim?.code || "FORM2"}
+        onGenerate={(generatedAttachments) => {
           if (targetForm2Claim) {
             const newDoc = {
               id: `doc-form2-${Date.now()}`,
@@ -1357,16 +1375,21 @@ export default function InvoiceAuditingVault({
               size: "1.5 MB",
               uploadedAt: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
               type: "PDF",
-              url: `/noc_vault/evidence/Form_2_Certificate_Of_Conformity_${targetForm2Claim.code}.pdf`
+              url: `/noc_vault/evidence/Form_2_Certificate_Of_Conformity_${targetForm2Claim.code}.pdf`,
+              document_type: "certificate_of_conformity"
             };
             const updated = claims.map(c => {
               if (c.id === targetForm2Claim.id) {
-                return { ...c, documents: [newDoc as any, ...c.documents] };
+                return {
+                  ...c,
+                  documents: [newDoc as any, ...c.documents],
+                  form2Attachments: generatedAttachments || c.form2Attachments
+                };
               }
               return c;
             });
             setClaims(updated);
-            showToast(isRtl ? "تم إصدار نموذج 2 بنجاح." : "Form 2 successfully generated.", "success");
+            showToast(isRtl ? "تم إصدار وإرفاق مستندات نموذج 2 بنجاح للمراجعة الفنية والمالية." : "Form 2 and mandatory attachments recorded for PMO Audit & Finance view.", "success");
           }
         }}
       />

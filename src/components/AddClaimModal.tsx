@@ -21,12 +21,19 @@ export default function AddClaimModal({ isOpen, onClose, onAddClaim, currentUser
   const [previousProgress, setPreviousProgress] = useState(30);
   const [claimedProgress, setClaimedProgress] = useState(50);
   const [priority, setPriority] = useState<"high" | "standard">("standard");
+  const [pillar, setPillar] = useState<import("../types").PillarType>("Development Drilling");
+  const [targetBopd, setTargetBopd] = useState("");
+  // Phase 5.2: ICV
+  const [localWorkforce, setLocalWorkforce] = useState(0);
+  const [localProcurement, setLocalProcurement] = useState(0);
+  const [localSubcontractor, setLocalSubcontractor] = useState(0);
+
   const [deliverableDesc, setDeliverableDesc] = useState("");
   const [deliverableWeight, setDeliverableWeight] = useState("10.0%");
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [error, setError] = useState("");
 
-  const isSubsidiary = currentUser && currentUser.companyId !== "NOC_HQ";
+  const isSubsidiary = Boolean(currentUser && currentUser.companyId !== "NOC_HQ");
 
   useEffect(() => {
     if (isOpen) {
@@ -47,6 +54,9 @@ export default function AddClaimModal({ isOpen, onClose, onAddClaim, currentUser
       setPreviousProgress(30);
       setClaimedProgress(50);
       setPriority("standard");
+      setLocalWorkforce(0);
+      setLocalProcurement(0);
+      setLocalSubcontractor(0);
       setDeliverables([]);
       setError("");
     }
@@ -143,6 +153,11 @@ export default function AddClaimModal({ isOpen, onClose, onAddClaim, currentUser
       ],
       auditorNotes: "",
       status: "pending",
+      pillar: pillar,
+      targetBopdIncrease: parseInt(targetBopd) || 0,
+      localWorkforcePercentage: localWorkforce,
+      localProcurementValue: localProcurement,
+      localSubcontractorCount: localSubcontractor,
     };
 
     onAddClaim(newClaim);
@@ -348,6 +363,47 @@ export default function AddClaimModal({ isOpen, onClose, onAddClaim, currentUser
                   {isRtl ? "عادية" : "Standard"}
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Phase 5.2: ICV Tracking */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg border border-indigo-200 dark:border-indigo-900/60 mt-4">
+            <div>
+              <label className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 block mb-1">
+                {isRtl ? "نسبة العمالة الوطنية (%)" : "Local Workforce (%)"}
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={localWorkforce}
+                onChange={(e) => setLocalWorkforce(Number(e.target.value))}
+                className="w-full text-xs p-2 border border-indigo-300 dark:border-indigo-800 bg-white dark:bg-[#0a1930] text-slate-900 dark:text-white rounded focus:ring-1 focus:ring-indigo-500 font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 block mb-1">
+                {isRtl ? "المشتريات المحلية (يورو)" : "Local Procurement (EUR)"}
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={localProcurement}
+                onChange={(e) => setLocalProcurement(Number(e.target.value))}
+                className="w-full text-xs p-2 border border-indigo-300 dark:border-indigo-800 bg-white dark:bg-[#0a1930] text-slate-900 dark:text-white rounded focus:ring-1 focus:ring-indigo-500 font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 block mb-1">
+                {isRtl ? "المقاولون المحليون (عدد)" : "Local Subcontractors (Count)"}
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={localSubcontractor}
+                onChange={(e) => setLocalSubcontractor(Number(e.target.value))}
+                className="w-full text-xs p-2 border border-indigo-300 dark:border-indigo-800 bg-white dark:bg-[#0a1930] text-slate-900 dark:text-white rounded focus:ring-1 focus:ring-indigo-500 font-mono"
+              />
             </div>
           </div>
 

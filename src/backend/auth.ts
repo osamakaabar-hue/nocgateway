@@ -4,8 +4,8 @@ import jwt from 'jsonwebtoken';
 import db from './db.js';
 import crypto from 'crypto';
 
+const getJwtSecret = () => process.env.JWT_SECRET || "noc_pm_secure_jwt_secret_key_32bytes_long_minimum!";
 export const authRouter = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-noc-key-for-dev';
 
 // Login to get a JWT
 authRouter.post('/login', (req, res) => {
@@ -52,7 +52,7 @@ authRouter.post('/login', (req, res) => {
 
   const token = jwt.sign(
     { id: user.id, email: user.email, company_id: user.company_id, version: user.version },
-    JWT_SECRET,
+    getJwtSecret(),
     { expiresIn: '8h' }
   );
 

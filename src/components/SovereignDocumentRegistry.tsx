@@ -299,7 +299,7 @@ export default function SovereignDocumentRegistry({
  
         {/* Upload Action */}
         <div className="flex items-center gap-3">
-          {(currentUser?.role === "subsidiary_pm" || currentUser?.role === "subsidiary_finance") && (
+          {(currentUser?.role === "subsidiary_pm" || currentUser?.role === "system_admin") && (
             <button
               onClick={() => {
                 if (claims.length > 0) {
@@ -593,129 +593,212 @@ export default function SovereignDocumentRegistry({
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse" dir={isRtl ? "rtl" : "ltr"}>
-                <thead>
-                  <tr className={`border-b uppercase text-[9px] tracking-wider font-bold ${
-                    isDark ? "border-slate-850 bg-slate-950/60 text-slate-400" : "border-slate-200 bg-slate-50 text-slate-500"
+          <>
+          {/* ── MOBILE CARDS (hidden on md+) ── */}
+          <div className="md:hidden divide-y">
+            {filteredDocuments.map((doc) => (
+              <div key={doc.id} className={`p-4 space-y-3 ${isDark ? 'bg-transparent' : 'bg-white'} ${isRtl ? 'text-right' : 'text-left'}`}>
+                {/* Doc name + type icon */}
+                <div className={`flex items-start gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <div className={`p-2.5 rounded-lg shrink-0 mt-0.5 ${
+                    doc.type === "PDF" ? "bg-red-500/10 text-red-400 border border-red-500/20" :
+                    doc.type === "XLSX" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                    "bg-sky-500/10 text-sky-400 border border-sky-500/20"
                   }`}>
-                    <th className={`py-3.5 px-4 ${isRtl ? "text-right" : "text-left"}`}>
-                      {isRtl ? "تفاصيل المستند الفني" : "Document Details"}
-                    </th>
-                    <th className={`py-3.5 px-4 ${isRtl ? "text-right" : "text-left"}`}>
-                      {isRtl ? "المشروع والشركة المشغلة" : "Operating Project"}
-                    </th>
-                    <th className={`py-3.5 px-4 ${isRtl ? "text-right" : "text-left"}`}>
-                      {isRtl ? "تاريخ ووقت التسجيل" : "Filing Date / Timestamp"}
-                    </th>
-                    <th className={`py-3.5 px-4 ${isRtl ? "text-right" : "text-left"}`}>
-                      {isRtl ? "حجم الملف" : "File Size"}
-                    </th>
-                    <th className={`py-3.5 px-4 ${isRtl ? "text-right" : "text-left"}`}>
-                      {isRtl ? "الحالة والتوثيق السيادي" : "Sovereign State"}
-                    </th>
-                    <th className={`py-3.5 px-4 ${isRtl ? "text-left" : "text-right"}`}>
-                      {isRtl ? "خيارات وإجراءات" : "Technical Actions"}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${isDark ? "divide-slate-900" : "divide-slate-100"}`}>
-                  {filteredDocuments.map((doc) => (
-                    <tr 
-                      key={doc.id}
-                      className={`transition-colors group ${
-                        isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50/50"
-                      }`}
+                    {doc.type === "PDF" ? <FileText className="w-4 h-4" /> :
+                     doc.type === "XLSX" ? <FileSpreadsheet className="w-4 h-4" /> :
+                     <Image className="w-4 h-4" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <button
+                      onClick={() => setPreviewDoc(doc)}
+                      className={`font-bold text-sm block text-left w-full break-words ${isDark ? 'text-slate-200 hover:text-amber-400' : 'text-slate-800 hover:text-amber-600'} transition-colors ${isRtl ? 'text-right' : 'text-left'}`}
                     >
-                      {/* Document details name and icon */}
-                      <td className="py-3.5 px-4">
-                        <div className={`flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
-                          <div className={`p-2 rounded-lg shrink-0 ${
-                            doc.type === "PDF" ? "bg-red-500/10 text-red-400 border border-red-500/20" :
-                            doc.type === "XLSX" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-                            "bg-sky-500/10 text-sky-400 border border-sky-500/20"
-                          }`}>
-                            {doc.type === "PDF" ? <FileText className="w-4 h-4" /> :
-                             doc.type === "XLSX" ? <FileSpreadsheet className="w-4 h-4" /> :
-                             <Image className="w-4 h-4" />}
-                          </div>
-                          <div className="overflow-hidden">
-                            <span 
-                              onClick={() => setPreviewDoc(doc)}
-                              className={`font-bold text-xs group-hover:text-amber-500 transition-colors block truncate max-w-full sm:max-w-[280px] cursor-pointer ${
-                                isDark ? "text-slate-200" : "text-slate-800"
-                              } ${isRtl ? "text-right" : "text-left"}`}
-                              title={doc.name}
-                            >
-                              {doc.name}
-                            </span>
-                            <span className={`text-[10px] font-mono block mt-0.5 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-                              {isRtl ? "المعرف: " : "ID: "}{doc.id} • {isRtl ? "الصيغة: " : "Format: "} <strong className={`${isDark ? "text-slate-400" : "text-slate-500"} font-bold`}>{doc.type}</strong>
-                            </span>
-                          </div>
+                      {doc.name}
+                    </button>
+                    <span className={`text-[10px] font-mono block mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      {isRtl ? "المعرف: " : "ID: "}{doc.id}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Meta grid */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className={`rounded-lg p-2 ${isDark ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">{isRtl ? "الشركة" : "Company"}</div>
+                    <div className={`font-semibold break-words ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{doc.companyName}</div>
+                  </div>
+                  <div className={`rounded-lg p-2 ${isDark ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">{isRtl ? "المشروع" : "Project"}</div>
+                    <div className="font-mono text-amber-500 text-[10px] font-bold">{doc.projectCode}</div>
+                    <div className={`text-[10px] break-words ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{doc.projectTitle}</div>
+                  </div>
+                  <div className={`rounded-lg p-2 ${isDark ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">{isRtl ? "التاريخ" : "Filed"}</div>
+                    <div className={`font-mono text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{doc.uploadedAt}</div>
+                  </div>
+                  <div className={`rounded-lg p-2 ${isDark ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">{isRtl ? "الحجم" : "Size"}</div>
+                    <div className={`font-mono font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{doc.size}</div>
+                  </div>
+                </div>
+
+                {/* Status + Actions */}
+                <div className={`flex items-center justify-between gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-1.5 border border-emerald-500/20 rounded-full font-mono ${isRtl ? 'flex-row-reverse' : ''}`}>
+                    <CheckCircle2 className="w-3 h-3 shrink-0" />
+                    {isRtl ? "موثق ومؤمن" : "Validated & Anchored"}
+                  </span>
+                  <div className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                    <button
+                      onClick={() => setPreviewDoc(doc)}
+                      className={`p-3 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center cursor-pointer ${
+                        isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800"
+                      }`}
+                      title={isRtl ? "معاينة" : "Preview"}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDirectDownload(doc, doc.companyName, doc.projectCode, doc.projectTitle)}
+                      className={`p-3 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center cursor-pointer ${
+                        isDark ? "bg-slate-800 hover:bg-slate-700 text-amber-500 hover:text-amber-400" : "bg-slate-100 hover:bg-slate-200 text-amber-600 hover:text-amber-500"
+                      }`}
+                      title={isRtl ? "تحميل" : "Download"}
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── DESKTOP TABLE (hidden on mobile) ── */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full border-collapse" dir={isRtl ? "rtl" : "ltr"}>
+              <thead>
+                <tr className={`border-b uppercase text-[9px] tracking-wider font-bold ${
+                  isDark ? "border-slate-850 bg-slate-950/60 text-slate-400" : "border-slate-200 bg-slate-50 text-slate-500"
+                }`}>
+                  <th className={`py-3.5 px-4 ${isRtl ? "text-right" : "text-left"}`}>
+                    {isRtl ? "تفاصيل المستند الفني" : "Document Details"}
+                  </th>
+                  <th className={`py-3.5 px-4 ${isRtl ? "text-right" : "text-left"}`}>
+                    {isRtl ? "المشروع والشركة المشغلة" : "Operating Project"}
+                  </th>
+                  <th className={`py-3.5 px-4 ${isRtl ? "text-right" : "text-left"}`}>
+                    {isRtl ? "تاريخ ووقت التسجيل" : "Filing Date / Timestamp"}
+                  </th>
+                  <th className={`py-3.5 px-4 ${isRtl ? "text-right" : "text-left"}`}>
+                    {isRtl ? "حجم الملف" : "File Size"}
+                  </th>
+                  <th className={`py-3.5 px-4 ${isRtl ? "text-right" : "text-left"}`}>
+                    {isRtl ? "الحالة والتوثيق السيادي" : "Sovereign State"}
+                  </th>
+                  <th className={`py-3.5 px-4 ${isRtl ? "text-left" : "text-right"}`}>
+                    {isRtl ? "خيارات وإجراءات" : "Technical Actions"}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${isDark ? "divide-slate-900" : "divide-slate-100"}`}>
+                {filteredDocuments.map((doc) => (
+                  <tr 
+                    key={doc.id}
+                    className={`transition-colors group ${
+                      isDark ? "hover:bg-slate-900/40" : "hover:bg-slate-50/50"
+                    }`}
+                  >
+                    {/* Document details name and icon */}
+                    <td className="py-3.5 px-4">
+                      <div className={`flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
+                        <div className={`p-2 rounded-lg shrink-0 ${
+                          doc.type === "PDF" ? "bg-red-500/10 text-red-400 border border-red-500/20" :
+                          doc.type === "XLSX" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                          "bg-sky-500/10 text-sky-400 border border-sky-500/20"
+                        }`}>
+                          {doc.type === "PDF" ? <FileText className="w-4 h-4" /> :
+                           doc.type === "XLSX" ? <FileSpreadsheet className="w-4 h-4" /> :
+                           <Image className="w-4 h-4" />}
                         </div>
-                      </td>
- 
-                      {/* Associated project details */}
-                      <td className="py-3.5 px-4">
-                        <div className="text-xs">
-                          <span className={`font-semibold block ${isDark ? "text-slate-300" : "text-slate-700"}`}>{doc.companyName}</span>
-                          <span className={`text-[10px] font-mono block mt-0.5 truncate max-w-full sm:max-w-[200px] ${isDark ? "text-slate-500" : "text-slate-400"}`} title={doc.projectTitle}>
-                            <strong className="text-amber-500 font-mono">{doc.projectCode}</strong> • {doc.projectTitle}
+                        <div className="overflow-hidden">
+                          <span 
+                            onClick={() => setPreviewDoc(doc)}
+                            className={`font-bold text-xs group-hover:text-amber-500 transition-colors block truncate max-w-full sm:max-w-[280px] cursor-pointer ${
+                              isDark ? "text-slate-200" : "text-slate-800"
+                            } ${isRtl ? "text-right" : "text-left"}`}
+                            title={doc.name}
+                          >
+                            {doc.name}
+                          </span>
+                          <span className={`text-[10px] font-mono block mt-0.5 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                            {isRtl ? "المعرف: " : "ID: "}{doc.id} • {isRtl ? "الصيغة: " : "Format: "} <strong className={`${isDark ? "text-slate-400" : "text-slate-500"} font-bold`}>{doc.type}</strong>
                           </span>
                         </div>
-                      </td>
+                      </div>
+                    </td>
  
-                      {/* Timestamp of filing */}
-                      <td className="py-3.5 px-4">
-                        <div className={`flex items-center gap-2 font-mono text-xs ${isDark ? "text-slate-300" : "text-slate-600"} ${isRtl ? "flex-row-reverse" : ""}`}>
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{doc.uploadedAt}</span>
-                        </div>
-                      </td>
- 
-                      {/* File size info */}
-                      <td className="py-3.5 px-4">
-                        <span className={`font-mono text-xs font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>{doc.size}</span>
-                      </td>
- 
-                      {/* Status signature seal */}
-                      <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20 rounded-full font-mono ${isRtl ? "flex-row-reverse" : ""}`}>
-                          <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                          {isRtl ? "موثق ومؤمن بالدفتر" : "Validated & Anchored"}
+                    {/* Associated project details */}
+                    <td className="py-3.5 px-4">
+                      <div className="text-xs">
+                        <span className={`font-semibold block ${isDark ? "text-slate-300" : "text-slate-700"}`}>{doc.companyName}</span>
+                        <span className={`text-[10px] font-mono block mt-0.5 truncate max-w-full sm:max-w-[200px] ${isDark ? "text-slate-500" : "text-slate-400"}`} title={doc.projectTitle}>
+                          <strong className="text-amber-500 font-mono">{doc.projectCode}</strong> • {doc.projectTitle}
                         </span>
-                      </td>
+                      </div>
+                    </td>
  
-                      {/* Download and View controls */}
-                      <td className={`py-3.5 px-4 ${isRtl ? "text-left" : "text-right"}`}>
-                        <div className={`flex items-center gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
-                          <button
-                            onClick={() => setPreviewDoc(doc)}
-                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                              isDark ? "bg-[#0a0f1d] hover:bg-slate-800 text-slate-300 hover:text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800"
-                            }`}
-                            title={isRtl ? "فتح المستعرض التفاعلي للمستند" : "Open interactive document viewer"}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          
-                          <button
-                            onClick={() => handleDirectDownload(doc, doc.companyName, doc.projectCode, doc.projectTitle)}
-                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                              isDark ? "bg-[#0a0f1d] hover:bg-slate-800 text-amber-500 hover:text-amber-400" : "bg-slate-100 hover:bg-slate-200 text-amber-600 hover:text-amber-500"
-                            }`}
-                            title={isRtl ? "تحميل المستند فورياً" : "Download document immediately"}
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    {/* Timestamp of filing */}
+                    <td className="py-3.5 px-4">
+                      <div className={`flex items-center gap-2 font-mono text-xs ${isDark ? "text-slate-300" : "text-slate-600"} ${isRtl ? "flex-row-reverse" : ""}`}>
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{doc.uploadedAt}</span>
+                      </div>
+                    </td>
+ 
+                    {/* File size info */}
+                    <td className="py-3.5 px-4">
+                      <span className={`font-mono text-xs font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>{doc.size}</span>
+                    </td>
+ 
+                    {/* Status signature seal */}
+                    <td className="py-3.5 px-4">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20 rounded-full font-mono ${isRtl ? "flex-row-reverse" : ""}`}>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                        {isRtl ? "موثق ومؤمن بالدفتر" : "Validated & Anchored"}
+                      </span>
+                    </td>
+ 
+                    {/* Download and View controls */}
+                    <td className={`py-3.5 px-4 ${isRtl ? "text-left" : "text-right"}`}>
+                      <div className={`flex items-center gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
+                        <button
+                          onClick={() => setPreviewDoc(doc)}
+                          className={`p-2 min-w-[36px] min-h-[36px] rounded-lg transition-colors cursor-pointer flex items-center justify-center ${
+                            isDark ? "bg-[#0a0f1d] hover:bg-slate-800 text-slate-300 hover:text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800"
+                          }`}
+                          title={isRtl ? "فتح المستعرض التفاعلي للمستند" : "Open interactive document viewer"}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        
+                        <button
+                          onClick={() => handleDirectDownload(doc, doc.companyName, doc.projectCode, doc.projectTitle)}
+                          className={`p-2 min-w-[36px] min-h-[36px] rounded-lg transition-colors cursor-pointer flex items-center justify-center ${
+                            isDark ? "bg-[#0a0f1d] hover:bg-slate-800 text-amber-500 hover:text-amber-400" : "bg-slate-100 hover:bg-slate-200 text-amber-600 hover:text-amber-500"
+                          }`}
+                          title={isRtl ? "تحميل المستند فورياً" : "Download document immediately"}
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          </>
           )}
  
         </div>
