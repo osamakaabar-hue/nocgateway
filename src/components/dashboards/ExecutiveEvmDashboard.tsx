@@ -64,6 +64,7 @@ const DEMO_PROJECTS: ProjectEvmMetrics[] = [
 interface ExecutiveEvmDashboardProps {
   isRtl?: boolean;
   lang?: 'en' | 'ar';
+  currentUser?: import('../../types').DemoUser | null;
   addNotification?: (
     title: string,
     message: string,
@@ -81,17 +82,34 @@ interface ExecutiveEvmDashboardProps {
 export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
   isRtl = false,
   lang = 'en',
+  currentUser,
   addNotification,
   showToast,
 }) => {
-  const [selectedSubsidiary, setSelectedSubsidiary] = useState<string>('ALL');
+  // If subsidiary user, force tenant restriction to their company
+  const isSubsidiaryUser = currentUser && currentUser.companyId !== 'NOC_HQ';
+  const tenantCompanyId = isSubsidiaryUser ? currentUser.companyId : 'ALL';
+
+  const [selectedSubsidiary, setSelectedSubsidiary] = useState<string>(tenantCompanyId);
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SLA_BOTTLENECKS' | 'PROJECT_DEEP_DIVE'>('OVERVIEW');
 
-  // Filter projects by subsidiary
+  // Sync selectedSubsidiary if user changes
+  React.useEffect(() => {
+    if (isSubsidiaryUser) {
+      setSelectedSubsidiary(currentUser.companyId);
+    }
+  }, [currentUser, isSubsidiaryUser]);
+
+  // Filter projects by subsidiary & tenant boundary
   const filteredProjects = useMemo(() => {
-    if (selectedSubsidiary === 'ALL') return DEMO_PROJECTS;
-    return DEMO_PROJECTS.filter((p) => p.subsidiaryId === selectedSubsidiary);
-  }, [selectedSubsidiary]);
+    let base = DEMO_PROJECTS;
+    if (isSubsidiaryUser) {
+      base = DEMO_PROJECTS.filter((p) => p.subsidiaryId === currentUser.companyId);
+    } else if (selectedSubsidiary !== 'ALL') {
+      base = DEMO_PROJECTS.filter((p) => p.subsidiaryId === selectedSubsidiary);
+    }
+    return base;
+  }, [selectedSubsidiary, isSubsidiaryUser, currentUser]);
 
   // Aggregate Portfolio Metrics
   const summary: PortfolioEvmSummary = useMemo(() => {
@@ -171,15 +189,24 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
           </label>
           <select
             value={selectedSubsidiary}
+            disabled={Boolean(isSubsidiaryUser)}
             onChange={(e) => setSelectedSubsidiary(e.target.value)}
-            className="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none"
+            className="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none disabled:opacity-80 disabled:cursor-not-allowed"
           >
-            <option value="ALL">{isRtl ? 'جميع الشركات ($1.119B)' : 'All Subsidiaries ($1.119B)'}</option>
-            <option value="WAHA">{isRtl ? 'شركة الواحة للنفط (WAHA)' : 'Waha Oil Company (WAHA)'}</option>
-            <option value="AGOCO">{isRtl ? 'شركة الخليج العربي للنفط (AGOCO)' : 'Arabian Gulf Oil Company (AGOCO)'}</option>
-            <option value="SIRTE">{isRtl ? 'شركة سرت لإنتاج وتصنيع النفط والغاز (SIRTE)' : 'Sirte Oil Company (SIRTE)'}</option>
-            <option value="MELLITAH">{isRtl ? 'شركة مليتة للنفط والغاز (MELLITAH)' : 'Mellitah Oil & Gas (MELLITAH)'}</option>
-            <option value="ZALLAF">{isRtl ? 'شركة زلاف ليبيا (ZALLAF)' : 'Zallaf Libya (ZALLAF)'}</option>
+            {isSubsidiaryUser ? (
+              <option value={currentUser.companyId}>
+                {currentUser.company} ({currentUser.companyId})
+              </option>
+            ) : (
+              <>
+                <option value="ALL">{isRtl ? 'جميع الشركات ($1.119B)' : 'All Subsidiaries ($1.119B)'}</option>
+                <option value="WAHA">{isRtl ? 'شركة الواحة للنفط (WAHA)' : 'Waha Oil Company (WAHA)'}</option>
+                <option value="AGOCO">{isRtl ? 'شركة الخليج العربي للنفط (AGOCO)' : 'Arabian Gulf Oil Company (AGOCO)'}</option>
+                <option value="SIRTE">{isRtl ? 'شركة سرت لإنتاج وتصنيع النفط والغاز (SIRTE)' : 'Sirte Oil Company (SIRTE)'}</option>
+                <option value="MELLITAH">{isRtl ? 'شركة مليتة للنفط والغاز (MELLITAH)' : 'Mellitah Oil & Gas (MELLITAH)'}</option>
+                <option value="ZALLAF">{isRtl ? 'شركة زلاف ليبيا (ZALLAF)' : 'Zallaf Libya (ZALLAF)'}</option>
+              </>
+            )}
           </select>
         </div>
       </div>
