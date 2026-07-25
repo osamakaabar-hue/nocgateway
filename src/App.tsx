@@ -599,7 +599,7 @@ export default function App() {
     message: string,
     type: "success" | "info" | "warning" | "error" = "info",
     claimId?: string,
-    tab?: "claims" | "wbs" | "invoices" | "lcs" | "documents" | "notifications",
+    tab?: "claims" | "wbs" | "invoices" | "lcs" | "documents" | "notifications" | "approval_control_tower",
     targetUserId?: string,
     companyId?: string,
     actionRequired: boolean = false,
@@ -3145,7 +3145,7 @@ export default function App() {
       ) : activeTab === "roi_analytics" ? (
         <RoiAnalyticsDashboard claims={claims} isRtl={isRtl} />
       ) : activeTab === "executive_evm" ? (
-        <ExecutiveEvmDashboard isRtl={isRtl} lang={lang} />
+        <ExecutiveEvmDashboard isRtl={isRtl} lang={lang} addNotification={addNotification} showToast={showToast} />
       ) : activeTab === "approval_control_tower" ? (
         <ApprovalInboxTable
           currentUserRole={activeRole}

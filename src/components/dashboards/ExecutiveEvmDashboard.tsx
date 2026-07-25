@@ -64,9 +64,26 @@ const DEMO_PROJECTS: ProjectEvmMetrics[] = [
 interface ExecutiveEvmDashboardProps {
   isRtl?: boolean;
   lang?: 'en' | 'ar';
+  addNotification?: (
+    title: string,
+    message: string,
+    type?: 'success' | 'info' | 'warning' | 'error',
+    claimId?: string,
+    tab?: 'claims' | 'wbs' | 'invoices' | 'lcs' | 'documents' | 'notifications' | 'approval_control_tower',
+    targetUserId?: string,
+    companyId?: string,
+    actionRequired?: boolean,
+    priority?: 'high' | 'normal'
+  ) => void;
+  showToast?: (text: string, type?: 'success' | 'info' | 'error') => void;
 }
 
-export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({ isRtl = false, lang = 'en' }) => {
+export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
+  isRtl = false,
+  lang = 'en',
+  addNotification,
+  showToast,
+}) => {
   const [selectedSubsidiary, setSelectedSubsidiary] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SLA_BOTTLENECKS' | 'PROJECT_DEEP_DIVE'>('OVERVIEW');
 
@@ -421,7 +438,32 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({ is
                     <div className="text-[10px] text-rose-600 dark:text-rose-300 uppercase font-semibold">
                       {isRtl ? 'تجاوز حد 48 ساعة المحدد' : 'Exceeds 48h SLA Target'}
                     </div>
-                    <button className="mt-2 text-xs px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium transition-colors cursor-pointer">
+                    <button
+                      onClick={() => {
+                        if (addNotification) {
+                          addNotification(
+                            "High SLA Bottleneck Alert",
+                            `SLA breach warning issued for claim ${b.claimId} (${b.project}). Elapsed time: ${b.elapsedBusinessHours}h. Immediate PMO Form 4 audit review required.`,
+                            "error",
+                            b.claimId,
+                            "approval_control_tower",
+                            undefined,
+                            b.subsidiary,
+                            true,
+                            "high"
+                          );
+                        }
+                        if (showToast) {
+                          showToast(
+                            isRtl
+                              ? `تم إرسال إشعار خرق SLA عاجل لمدقق المكتب الهندسي (Eng. Nadia Al-Kout) للمطالبة ${b.claimId}.`
+                              : `High priority SLA Breach alert dispatched to PMO Auditor (Eng. Nadia Al-Kout) for claim ${b.claimId}.`,
+                            "error"
+                          );
+                        }
+                      }}
+                      className="mt-2 text-xs px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium transition-colors cursor-pointer shadow flex items-center gap-1 active:scale-95"
+                    >
                       {isRtl ? 'إرسال تنبيه للمدقق الفني' : 'Notify PMO Auditor'}
                     </button>
                   </div>

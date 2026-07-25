@@ -152,7 +152,7 @@ export interface NotificationItem {
   read: boolean;
   type: "success" | "info" | "warning" | "error";
   claimId?: string;
-  tab?: "claims" | "wbs" | "invoices" | "lcs" | "documents" | "notifications";
+  tab?: "claims" | "wbs" | "invoices" | "lcs" | "documents" | "notifications" | "approval_control_tower";
   actionRequired?: boolean;
   actionCompleted?: boolean;
   priority?: "high" | "normal";
