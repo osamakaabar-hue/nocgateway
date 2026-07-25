@@ -3145,7 +3145,7 @@ export default function App() {
       ) : activeTab === "roi_analytics" ? (
         <RoiAnalyticsDashboard claims={claims} isRtl={isRtl} />
       ) : activeTab === "executive_evm" ? (
-        <ExecutiveEvmDashboard />
+        <ExecutiveEvmDashboard isRtl={isRtl} lang={lang} />
       ) : activeTab === "approval_control_tower" ? (
         <ApprovalInboxTable
           currentUserRole={activeRole}

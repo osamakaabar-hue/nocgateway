@@ -61,7 +61,12 @@ const DEMO_PROJECTS: ProjectEvmMetrics[] = [
   ),
 ];
 
-export const ExecutiveEvmDashboard: React.FC = () => {
+interface ExecutiveEvmDashboardProps {
+  isRtl?: boolean;
+  lang?: 'en' | 'ar';
+}
+
+export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({ isRtl = false, lang = 'en' }) => {
   const [selectedSubsidiary, setSelectedSubsidiary] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SLA_BOTTLENECKS' | 'PROJECT_DEEP_DIVE'>('OVERVIEW');
 
@@ -119,39 +124,45 @@ export const ExecutiveEvmDashboard: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 text-slate-100 p-6 space-y-6 font-sans">
+    <div className="w-full min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-6 space-y-6 font-sans" dir={isRtl ? 'rtl' : 'ltr'}>
       
       {/* Header & Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
           <div className="flex items-center gap-3">
-            <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold rounded-full uppercase tracking-wider">
-              PMBOK 7th Edition Standard
+            <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-semibold rounded-full uppercase tracking-wider">
+              {isRtl ? 'معيار PMBOK الإصدار السابع' : 'PMBOK 7th Edition Standard'}
             </span>
-            <span className="text-xs text-slate-400">Portfolio Baseline: $1.119 Billion</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {isRtl ? 'خط الأساس للمحفظة: 1.119 مليار دولار' : 'Portfolio Baseline: $1.119 Billion'}
+            </span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight mt-1">
-            NOC Executive EVM & SLA Dashboard
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mt-1">
+            {isRtl ? 'لوحة قياس القيمة المكتسبة لاتفاقيات مستوى الخدمة (EVM & SLA)' : 'NOC Executive EVM & SLA Dashboard'}
           </h1>
-          <p className="text-sm text-slate-400">
-            لوحة المتابعة التنفيذية لقياس القيمة المكتسبة وإدارة اختناقات اتفاقية مستوى الخدمة (Form 2 → Form 4 → Form 3)
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {isRtl
+              ? 'لوحة المتابعة التنفيذية لقياس القيمة المكتسبة وإدارة اختناقات اتفاقية مستوى الخدمة (Form 2 → Form 4 → Form 3)'
+              : 'Executive tracking dashboard for Earned Value & SLA Bottlenecks (Form 2 → Form 4 → Form 3)'}
           </p>
         </div>
 
         {/* Filter Controls */}
         <div className="flex items-center gap-3">
-          <label className="text-xs text-slate-400 font-medium">Operating Unit:</label>
+          <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            {isRtl ? 'الشركة التشغيلية:' : 'Operating Unit:'}
+          </label>
           <select
             value={selectedSubsidiary}
             onChange={(e) => setSelectedSubsidiary(e.target.value)}
-            className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none"
+            className="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none"
           >
-            <option value="ALL">All Subsidiaries ($1.119B)</option>
-            <option value="WAHA">Waha Oil Company (WAHA)</option>
-            <option value="AGOCO">Arabian Gulf Oil Company (AGOCO)</option>
-            <option value="SIRTE">Sirte Oil Company (SIRTE)</option>
-            <option value="MELLITAH">Mellitah Oil & Gas (MELLITAH)</option>
-            <option value="ZALLAF">Zallaf Libya (ZALLAF)</option>
+            <option value="ALL">{isRtl ? 'جميع الشركات ($1.119B)' : 'All Subsidiaries ($1.119B)'}</option>
+            <option value="WAHA">{isRtl ? 'شركة الواحة للنفط (WAHA)' : 'Waha Oil Company (WAHA)'}</option>
+            <option value="AGOCO">{isRtl ? 'شركة الخليج العربي للنفط (AGOCO)' : 'Arabian Gulf Oil Company (AGOCO)'}</option>
+            <option value="SIRTE">{isRtl ? 'شركة سرت لإنتاج وتصنيع النفط والغاز (SIRTE)' : 'Sirte Oil Company (SIRTE)'}</option>
+            <option value="MELLITAH">{isRtl ? 'شركة مليتة للنفط والغاز (MELLITAH)' : 'Mellitah Oil & Gas (MELLITAH)'}</option>
+            <option value="ZALLAF">{isRtl ? 'شركة زلاف ليبيا (ZALLAF)' : 'Zallaf Libya (ZALLAF)'}</option>
           </select>
         </div>
       </div>
@@ -160,15 +171,17 @@ export const ExecutiveEvmDashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Planned Value vs Earned Value */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
-          <div className="text-xs text-slate-400 font-medium">Earned Value (EV) / Planned (PV)</div>
-          <div className="text-2xl font-bold text-white mt-1">
-            {formatCurrency(summary.portfolioEv)}
-            <span className="text-xs font-normal text-slate-400 ml-2">/ {formatCurrency(summary.portfolioPv)}</span>
+        <div className="bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
+          <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            {isRtl ? 'القيمة المكتسبة (EV) / المخططة (PV)' : 'Earned Value (EV) / Planned (PV)'}
           </div>
-          <div className="mt-3 flex items-center justify-between text-xs border-t border-slate-800/80 pt-2">
-            <span className="text-slate-400">Schedule Variance (SV):</span>
-            <span className={summary.portfolioSv >= 0 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+            {formatCurrency(summary.portfolioEv)}
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-400 ml-2">/ {formatCurrency(summary.portfolioPv)}</span>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs border-t border-slate-200 dark:border-slate-800/80 pt-2">
+            <span className="text-slate-500 dark:text-slate-400">{isRtl ? 'انحراف الجدول (SV):' : 'Schedule Variance (SV):'}</span>
+            <span className={summary.portfolioSv >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-rose-600 dark:text-rose-400 font-semibold'}>
               {summary.portfolioSv >= 0 ? `+${formatCurrency(summary.portfolioSv)}` : formatCurrency(summary.portfolioSv)}
             </span>
           </div>
@@ -177,90 +190,100 @@ export const ExecutiveEvmDashboard: React.FC = () => {
         {/* CPI Index (HIGHLIGHT CRITICAL REQUIREMENT: Red if CPI < 1.0) */}
         <div className={`border rounded-xl p-4 shadow-sm relative overflow-hidden transition-all ${
           summary.portfolioCpi < 1.0
-            ? 'bg-rose-950/20 border-rose-800/50 text-rose-200'
-            : 'bg-slate-900/80 border-slate-800 text-slate-100'
+            ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/50 text-rose-900 dark:text-rose-200'
+            : 'bg-slate-50 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100'
         }`}>
           <div className="flex justify-between items-start">
-            <div className="text-xs font-medium text-slate-400">Cost Performance Index (CPI)</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              {isRtl ? 'مؤشر الأداء المالي (CPI)' : 'Cost Performance Index (CPI)'}
+            </div>
             {summary.portfolioCpi < 1.0 && (
-              <span className="px-2 py-0.5 bg-rose-500/20 text-rose-400 text-[10px] font-bold rounded uppercase border border-rose-500/30 animate-pulse">
-                Over Budget
+              <span className="px-2 py-0.5 bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[10px] font-bold rounded uppercase border border-rose-500/30 animate-pulse">
+                {isRtl ? 'تجاوز الميزانية' : 'Over Budget'}
               </span>
             )}
           </div>
           <div className={`text-3xl font-extrabold mt-1 ${
-            summary.portfolioCpi < 1.0 ? 'text-rose-400' : 'text-emerald-400'
+            summary.portfolioCpi < 1.0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
           }`}>
             {summary.portfolioCpi.toFixed(3)}
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs border-t border-slate-800/80 pt-2">
-            <span className="text-slate-400">Formula: EV / AC</span>
-            <span className="text-slate-300">Cost Var: {formatCurrency(summary.portfolioCv)}</span>
+          <div className="mt-2 flex items-center justify-between text-xs border-t border-slate-200 dark:border-slate-800/80 pt-2">
+            <span className="text-slate-500 dark:text-slate-400">{isRtl ? 'المعادلة: EV / AC' : 'Formula: EV / AC'}</span>
+            <span className="text-slate-700 dark:text-slate-300">{isRtl ? 'تباين التكلفة: ' : 'Cost Var: '}{formatCurrency(summary.portfolioCv)}</span>
           </div>
         </div>
 
         {/* SPI Index */}
         <div className={`border rounded-xl p-4 shadow-sm relative overflow-hidden transition-all ${
           summary.portfolioSpi < 1.0
-            ? 'bg-amber-950/20 border-amber-800/50 text-amber-200'
-            : 'bg-slate-900/80 border-slate-800 text-slate-100'
+            ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-200'
+            : 'bg-slate-50 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100'
         }`}>
           <div className="flex justify-between items-start">
-            <div className="text-xs font-medium text-slate-400">Schedule Performance Index (SPI)</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              {isRtl ? 'مؤشر الأداء الزمني (SPI)' : 'Schedule Performance Index (SPI)'}
+            </div>
             {summary.portfolioSpi < 1.0 && (
-              <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded uppercase border border-amber-500/30">
-                Behind Schedule
+              <span className="px-2 py-0.5 bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[10px] font-bold rounded uppercase border border-amber-500/30">
+                {isRtl ? 'متأخر عن الجدول' : 'Behind Schedule'}
               </span>
             )}
           </div>
           <div className={`text-3xl font-extrabold mt-1 ${
-            summary.portfolioSpi < 1.0 ? 'text-amber-400' : 'text-emerald-400'
+            summary.portfolioSpi < 1.0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
           }`}>
             {summary.portfolioSpi.toFixed(3)}
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs border-t border-slate-800/80 pt-2">
-            <span className="text-slate-400">Formula: EV / PV</span>
-            <span className="text-slate-300">BAC: {formatCurrency(summary.portfolioBac)}</span>
+          <div className="mt-2 flex items-center justify-between text-xs border-t border-slate-200 dark:border-slate-800/80 pt-2">
+            <span className="text-slate-500 dark:text-slate-400">{isRtl ? 'المعادلة: EV / PV' : 'Formula: EV / PV'}</span>
+            <span className="text-slate-700 dark:text-slate-300">BAC: {formatCurrency(summary.portfolioBac)}</span>
           </div>
         </div>
 
         {/* SLA Bottleneck Alert Card */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="text-xs text-slate-400 font-medium">SLA Compliance (48h Form 2 → Form 4)</div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-white">{summary.totalSlaBreaches}</span>
-            <span className="text-xs text-rose-400 font-semibold">Active Breaches (&gt;48 business hrs)</span>
+        <div className="bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            {isRtl ? 'امتثال SLA (48 ساعة Form 2 → Form 4)' : 'SLA Compliance (48h Form 2 → Form 4)'}
           </div>
-          <div className="mt-3 flex items-center justify-between text-xs border-t border-slate-800/80 pt-2">
-            <span className="text-slate-400">Libya Business Week:</span>
-            <span className="text-emerald-400 font-medium">Sun–Thu (Fri/Sat Excluded)</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-2xl font-bold text-slate-900 dark:text-white">{summary.totalSlaBreaches}</span>
+            <span className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
+              {isRtl ? 'خرق نشط (أكثر من 48 ساعة عمل)' : 'Active Breaches (>48 business hrs)'}
+            </span>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs border-t border-slate-200 dark:border-slate-800/80 pt-2">
+            <span className="text-slate-500 dark:text-slate-400">{isRtl ? 'أسبوع العمل في ليبيا:' : 'Libya Business Week:'}</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+              {isRtl ? 'الأحد - الخميس (الجمعة/السبت مستثناة)' : 'Sun–Thu (Fri/Sat Excluded)'}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-800 gap-6 text-sm font-medium">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 text-sm font-medium">
         <button
           onClick={() => setActiveTab('OVERVIEW')}
           className={`pb-3 transition-colors relative ${
             activeTab === 'OVERVIEW'
-              ? 'text-emerald-400 border-b-2 border-emerald-400 font-semibold'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500 font-semibold'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          EVM Project Performance Matrix
+          {isRtl ? 'مصفوفة أداء القيمة المكتسبة (EVM)' : 'EVM Project Performance Matrix'}
         </button>
         <button
           onClick={() => setActiveTab('SLA_BOTTLENECKS')}
           className={`pb-3 transition-colors relative flex items-center gap-2 ${
             activeTab === 'SLA_BOTTLENECKS'
-              ? 'text-emerald-400 border-b-2 border-emerald-400 font-semibold'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500 font-semibold'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          SLA Workflow Bottlenecks
+          {isRtl ? 'اختناقات مسار العمل (SLA Bottlenecks)' : 'SLA Workflow Bottlenecks'}
           {summary.totalSlaBreaches > 0 && (
-            <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-400 text-xs rounded-full border border-rose-500/30">
+            <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs rounded-full border border-rose-500/30">
               {summary.totalSlaBreaches}
             </span>
           )}
@@ -269,76 +292,82 @@ export const ExecutiveEvmDashboard: React.FC = () => {
 
       {/* Tab 1: EVM Detailed Matrix Table */}
       {activeTab === 'OVERVIEW' && (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-          <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/90">
-            <h3 className="text-sm font-semibold text-white">Project EVM Metrics Breakdown (PMBOK 7th Edition)</h3>
-            <span className="text-xs text-slate-400">Total Projects: {summary.projects.length}</span>
+        <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/90">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              {isRtl ? 'تفاصيل مقاييس القيمة المكتسبة للمشاريع (PMBOK الإصدار 7)' : 'Project EVM Metrics Breakdown (PMBOK 7th Edition)'}
+            </h3>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {isRtl ? `إجمالي المشاريع: ${summary.projects.length}` : `Total Projects: ${summary.projects.length}`}
+            </span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950/80 uppercase font-semibold text-slate-400 border-b border-slate-800">
+            <table className="w-full text-start text-xs text-slate-700 dark:text-slate-300">
+              <thead className="bg-slate-100 dark:bg-slate-950 uppercase font-semibold text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                 <tr>
-                  <th className="py-3 px-4">Project / Subsidiary</th>
-                  <th className="py-3 px-4">BAC</th>
-                  <th className="py-3 px-4">PV (Planned)</th>
-                  <th className="py-3 px-4">EV (Earned)</th>
-                  <th className="py-3 px-4">AC (Actual)</th>
-                  <th className="py-3 px-4">CPI (EV/AC)</th>
-                  <th className="py-3 px-4">SPI (EV/PV)</th>
-                  <th className="py-3 px-4">EAC (Forecast)</th>
-                  <th className="py-3 px-4">SLA Status</th>
+                  <th className="py-3 px-4 text-start">{isRtl ? 'المشروع / الشركة' : 'Project / Subsidiary'}</th>
+                  <th className="py-3 px-4 text-start">{isRtl ? 'الميزانية (BAC)' : 'BAC'}</th>
+                  <th className="py-3 px-4 text-start">{isRtl ? 'المخطط (PV)' : 'PV (Planned)'}</th>
+                  <th className="py-3 px-4 text-start">{isRtl ? 'المكتسب (EV)' : 'EV (Earned)'}</th>
+                  <th className="py-3 px-4 text-start">{isRtl ? 'الفعلي (AC)' : 'AC (Actual)'}</th>
+                  <th className="py-3 px-4 text-start">{isRtl ? 'مؤشر التكلفة (CPI)' : 'CPI (EV/AC)'}</th>
+                  <th className="py-3 px-4 text-start">{isRtl ? 'مؤشر الوقت (SPI)' : 'SPI (EV/PV)'}</th>
+                  <th className="py-3 px-4 text-start">{isRtl ? 'التكلفة المتوقعة (EAC)' : 'EAC (Forecast)'}</th>
+                  <th className="py-3 px-4 text-start">{isRtl ? 'حالة SLA' : 'SLA Status'}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
                 {summary.projects.map((p) => {
                   const isCpiOverBudget = p.costPerformanceIndex < 1.0;
                   const isSpiBehind = p.schedulePerformanceIndex < 1.0;
 
                   return (
-                    <tr key={p.projectId} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3.5 px-4 font-medium text-white">
-                        <div>{p.projectNameEn}</div>
-                        <div className="text-[11px] text-slate-400">{p.projectNameAr} • <span className="text-slate-300 font-semibold">{p.subsidiaryId}</span></div>
+                    <tr key={p.projectId} className="hover:bg-slate-100/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3.5 px-4 font-medium text-slate-900 dark:text-white text-start">
+                        <div>{isRtl ? p.projectNameAr : p.projectNameEn}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {isRtl ? p.projectNameEn : p.projectNameAr} • <span className="text-slate-700 dark:text-slate-300 font-semibold">{p.subsidiaryId}</span>
+                        </div>
                       </td>
-                      <td className="py-3.5 px-4 font-mono">{formatCurrency(p.budgetAtCompletion)}</td>
-                      <td className="py-3.5 px-4 font-mono">{formatCurrency(p.plannedValue)}</td>
-                      <td className="py-3.5 px-4 font-mono text-emerald-400 font-semibold">{formatCurrency(p.earnedValue)}</td>
-                      <td className="py-3.5 px-4 font-mono">{formatCurrency(p.actualCost)}</td>
+                      <td className="py-3.5 px-4 font-mono text-start">{formatCurrency(p.budgetAtCompletion)}</td>
+                      <td className="py-3.5 px-4 font-mono text-start">{formatCurrency(p.plannedValue)}</td>
+                      <td className="py-3.5 px-4 font-mono text-emerald-600 dark:text-emerald-400 font-semibold text-start">{formatCurrency(p.earnedValue)}</td>
+                      <td className="py-3.5 px-4 font-mono text-start">{formatCurrency(p.actualCost)}</td>
                       
                       {/* CPI Column — Highlighted in Red if < 1.0 */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 text-start">
                         <span className={`px-2.5 py-1 rounded font-bold font-mono border ${
                           isCpiOverBudget
-                            ? 'bg-rose-950/60 text-rose-400 border-rose-800/60'
-                            : 'bg-emerald-950/60 text-emerald-400 border-emerald-800/60'
+                            ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/60'
+                            : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
                         }`}>
                           {p.costPerformanceIndex.toFixed(3)}
                         </span>
                       </td>
 
                       {/* SPI Column */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 text-start">
                         <span className={`px-2.5 py-1 rounded font-bold font-mono border ${
                           isSpiBehind
-                            ? 'bg-amber-950/60 text-amber-400 border-amber-800/60'
-                            : 'bg-emerald-950/60 text-emerald-400 border-emerald-800/60'
+                            ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
+                            : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
                         }`}>
                           {p.schedulePerformanceIndex.toFixed(3)}
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4 font-mono font-semibold text-slate-200">
+                      <td className="py-3.5 px-4 font-mono font-semibold text-slate-800 dark:text-slate-200 text-start">
                         {formatCurrency(p.estimateAtCompletion)}
                       </td>
 
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 text-start">
                         {p.slaBreachedClaimsCount > 0 ? (
-                          <span className="px-2 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/30 rounded text-[11px] font-semibold">
-                            {p.slaBreachedClaimsCount} Breaches
+                          <span className="px-2 py-1 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 rounded text-[11px] font-semibold">
+                            {isRtl ? `${p.slaBreachedClaimsCount} خرق SLA` : `${p.slaBreachedClaimsCount} Breaches`}
                           </span>
                         ) : (
-                          <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-[11px] font-semibold">
-                            Compliant
+                          <span className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded text-[11px] font-semibold">
+                            {isRtl ? 'مطابق لـ SLA' : 'Compliant'}
                           </span>
                         )}
                       </td>
@@ -354,38 +383,46 @@ export const ExecutiveEvmDashboard: React.FC = () => {
       {/* Tab 2: SLA Bottleneck Monitoring */}
       {activeTab === 'SLA_BOTTLENECKS' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-white border-b border-slate-800 pb-3">
-              Form 2 (Subsidiary Submission) → Form 4 (PMO Technical Approval) Bottlenecks
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-3">
+              {isRtl
+                ? 'اختناقات المسار: نموذج 2 (تقديم الشركة) ← نموذج 4 (اعتماد التدقيق الفني)'
+                : 'Form 2 (Subsidiary Submission) → Form 4 (PMO Technical Approval) Bottlenecks'}
             </h3>
-            <p className="text-xs text-slate-400">
-              SLA Rule: PMO Auditor must issue Form 4 within 48 business hours (excl. Friday/Saturday) after Form 2 submission by subsidiary_pm.
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {isRtl
+                ? 'قاعدة SLA: يجب على مدقق المكتب الهندسي إصدار نموذج 4 خلال 48 ساعة عمل (باستثناء الجمعة والسبت) من تقديم النموذج 2.'
+                : 'SLA Rule: PMO Auditor must issue Form 4 within 48 business hours (excl. Friday/Saturday) after Form 2 submission by subsidiary_pm.'}
             </p>
 
             <div className="space-y-3">
               {summary.projects.flatMap(p => p.slaBreachedClaimsCount > 0 ? [{
                 claimId: `CLM-${p.projectId.slice(-3)}-089`,
-                project: p.projectNameEn,
+                project: isRtl ? p.projectNameAr : p.projectNameEn,
                 subsidiary: p.subsidiaryId,
                 submittedAt: '2026-07-20T09:00:00.000Z',
                 elapsedBusinessHours: p.avgSlaResolutionHours,
                 status: 'SLA_BREACH'
               }] : []).map((b, i) => (
-                <div key={i} className="p-4 bg-rose-950/20 border border-rose-800/40 rounded-lg flex items-center justify-between">
+                <div key={i} className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/40 rounded-lg flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-rose-400 text-sm">{b.claimId}</span>
-                      <span className="text-xs px-2 py-0.5 bg-rose-500/20 text-rose-300 rounded font-medium">{b.subsidiary}</span>
+                      <span className="font-bold text-rose-600 dark:text-rose-400 text-sm">{b.claimId}</span>
+                      <span className="text-xs px-2 py-0.5 bg-rose-500/20 text-rose-700 dark:text-rose-300 rounded font-medium">{b.subsidiary}</span>
                     </div>
-                    <div className="text-xs text-slate-300 mt-1">{b.project}</div>
-                    <div className="text-[11px] text-slate-400 mt-1">Submitted: {new Date(b.submittedAt).toLocaleDateString()}</div>
+                    <div className="text-xs text-slate-800 dark:text-slate-300 mt-1">{b.project}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      {isRtl ? `تاريخ التقديم: ${new Date(b.submittedAt).toLocaleDateString('ar-LY')}` : `Submitted: ${new Date(b.submittedAt).toLocaleDateString()}`}
+                    </div>
                   </div>
 
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-rose-400">{b.elapsedBusinessHours} hrs</div>
-                    <div className="text-[10px] text-rose-300 uppercase font-semibold">Exceeds 48h SLA Target</div>
-                    <button className="mt-2 text-xs px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium transition-colors">
-                      Notify PMO Auditor
+                  <div className="text-end">
+                    <div className="text-lg font-bold text-rose-600 dark:text-rose-400">{b.elapsedBusinessHours} {isRtl ? 'ساعة' : 'hrs'}</div>
+                    <div className="text-[10px] text-rose-600 dark:text-rose-300 uppercase font-semibold">
+                      {isRtl ? 'تجاوز حد 48 ساعة المحدد' : 'Exceeds 48h SLA Target'}
+                    </div>
+                    <button className="mt-2 text-xs px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium transition-colors cursor-pointer">
+                      {isRtl ? 'إرسال تنبيه للمدقق الفني' : 'Notify PMO Auditor'}
                     </button>
                   </div>
                 </div>
@@ -394,20 +431,22 @@ export const ExecutiveEvmDashboard: React.FC = () => {
           </div>
 
           {/* SLA Rule Summary Box */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-white border-b border-slate-800 pb-3">SLA Governance Policy</h3>
-            <div className="text-xs text-slate-300 space-y-2">
-              <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                <div className="font-semibold text-emerald-400">Business Hours Definition</div>
-                <div className="text-slate-400 mt-0.5">08:00 – 16:00 UTC (8 hrs/day)</div>
+          <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-3">
+              {isRtl ? 'سياسة حوكمة اتفاقية مستوى الخدمة' : 'SLA Governance Policy'}
+            </h3>
+            <div className="text-xs text-slate-700 dark:text-slate-300 space-y-2">
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800">
+                <div className="font-semibold text-emerald-600 dark:text-emerald-400">{isRtl ? 'تعريف ساعات العمل' : 'Business Hours Definition'}</div>
+                <div className="text-slate-500 dark:text-slate-400 mt-0.5">{isRtl ? '08:00 – 16:00 بتوقيت ليبيا (8 ساعات/يوم)' : '08:00 – 16:00 UTC (8 hrs/day)'}</div>
               </div>
-              <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                <div className="font-semibold text-emerald-400">Libyan Weekend Calendar</div>
-                <div className="text-slate-400 mt-0.5">Friday & Saturday excluded from SLA timer</div>
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800">
+                <div className="font-semibold text-emerald-600 dark:text-emerald-400">{isRtl ? 'التقويم والأطلة الأسبوعية في ليبيا' : 'Libyan Weekend Calendar'}</div>
+                <div className="text-slate-500 dark:text-slate-400 mt-0.5">{isRtl ? 'يومي الجمعة والسبت مستثناة من مؤقت SLA' : 'Friday & Saturday excluded from SLA timer'}</div>
               </div>
-              <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                <div className="font-semibold text-rose-400">Audit Trail Trigger</div>
-                <div className="text-slate-400 mt-0.5">Automated SLA_BREACH block logged to SHA-256 audit chain</div>
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800">
+                <div className="font-semibold text-rose-600 dark:text-rose-400">{isRtl ? 'تسجيل الخرق في سجل الأمان' : 'Audit Trail Trigger'}</div>
+                <div className="text-slate-500 dark:text-slate-400 mt-0.5">{isRtl ? 'يتم توثيق خرق SLA تلقائياً في سلسلة التشفير SHA-256' : 'Automated SLA_BREACH block logged to SHA-256 audit chain'}</div>
               </div>
             </div>
           </div>
