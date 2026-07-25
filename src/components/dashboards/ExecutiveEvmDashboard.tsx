@@ -120,6 +120,11 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
     return base;
   }, [selectedSubsidiary, isSubsidiaryUser, currentUser]);
 
+  // Calculate active SLA breaches dynamically based on live signed claims
+  const signedClaimsCount = useMemo(() => {
+    return claims.filter(c => c.status !== 'pending_gatekeeper' && c.status !== 'draft').length;
+  }, [claims]);
+
   // Aggregate Portfolio Metrics
   const summary: PortfolioEvmSummary = useMemo(() => {
     const portfolioBac = filteredProjects.reduce((s, p) => s + p.budgetAtCompletion, 0);
@@ -134,7 +139,9 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
 
     const portfolioEac = portfolioCpi > 0 ? portfolioBac / portfolioCpi : portfolioBac;
     const portfolioVac = portfolioBac - portfolioEac;
-    const totalSlaBreaches = filteredProjects.reduce((s, p) => s + p.slaBreachedClaimsCount, 0);
+
+    const baseSlaBreaches = filteredProjects.reduce((s, p) => s + p.slaBreachedClaimsCount, 0);
+    const totalSlaBreaches = Math.max(0, baseSlaBreaches - signedClaimsCount);
 
     let healthStatus: PortfolioEvmSummary['healthStatus'] = 'HEALTHY';
     if (portfolioCpi < 0.95 || portfolioSpi < 0.95 || totalSlaBreaches > 5) {
@@ -455,17 +462,17 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
                 // Find matching live claims for this subsidiary
                 const matchingClaims = claims.filter(c => c.companyId === p.subsidiaryId || c.company.includes(p.subsidiaryId));
                 
-                // Check if the primary claim for this subsidiary has signed Form 4
-                const primaryClaim = matchingClaims[0];
-                const form4Signed = primaryClaim ? (primaryClaim.status !== 'pending_gatekeeper' && primaryClaim.status !== 'draft') : false;
-
-                // Render cards matching slaBreachedClaimsCount
                 const items = [];
-                const displayCount = form4Signed ? Math.max(0, p.slaBreachedClaimsCount - 1) : p.slaBreachedClaimsCount;
 
-                for (let idx = 0; idx < displayCount; idx++) {
-                  const claimCode = primaryClaim && idx === 0 ? primaryClaim.code : `${p.subsidiaryId}-26-00${idx + 1}`;
-                  const claimId = primaryClaim && idx === 0 ? primaryClaim.id : `claim-${p.subsidiaryId.toLowerCase()}-${idx + 1}`;
+                for (let idx = 0; idx < p.slaBreachedClaimsCount; idx++) {
+                  const matchingClaim = matchingClaims[idx];
+                  const isSigned = matchingClaim ? (matchingClaim.status !== 'pending_gatekeeper' && matchingClaim.status !== 'draft') : false;
+
+                  // Skip any claim that has already been signed by Eng. Nadia!
+                  if (isSigned) continue;
+
+                  const claimCode = matchingClaim ? matchingClaim.code : `${p.subsidiaryId}-26-00${idx + 1}`;
+                  const claimId = matchingClaim ? matchingClaim.id : `claim-${p.subsidiaryId.toLowerCase()}-${idx + 1}`;
 
                   items.push({
                     claimId: claimCode,
@@ -474,7 +481,7 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
                     projectAr: p.projectNameAr,
                     project: isRtl ? p.projectNameAr : p.projectNameEn,
                     subsidiary: p.subsidiaryId,
-                    submittedAt: primaryClaim && idx === 0 ? primaryClaim.submissionDate : '2026-07-20T09:00:00.000Z',
+                    submittedAt: matchingClaim ? matchingClaim.submissionDate : '2026-07-20T09:00:00.000Z',
                     elapsedBusinessHours: Number((p.avgSlaResolutionHours + (idx * 5.2)).toFixed(1)),
                     bac: p.budgetAtCompletion,
                     ev: p.earnedValue,
