@@ -3149,7 +3149,17 @@ export default function App() {
       ) : activeTab === "roi_analytics" ? (
         <RoiAnalyticsDashboard claims={claims} isRtl={isRtl} />
       ) : activeTab === "executive_evm" ? (
-        <ExecutiveEvmDashboard isRtl={isRtl} lang={lang} currentUser={currentUser} addNotification={addNotification} showToast={showToast} />
+        <ExecutiveEvmDashboard
+          isRtl={isRtl}
+          lang={lang}
+          currentUser={currentUser}
+          claims={claims}
+          onNavigateToTab={setActiveTab}
+          onSelectClaimId={setSelectedClaimId}
+          setPreviewDoc={setPreviewDoc}
+          addNotification={addNotification}
+          showToast={showToast}
+        />
       ) : activeTab === "approval_control_tower" ? (
         <ApprovalInboxTable
           currentUserRole={activeRole}

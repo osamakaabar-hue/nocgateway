@@ -65,6 +65,10 @@ interface ExecutiveEvmDashboardProps {
   isRtl?: boolean;
   lang?: 'en' | 'ar';
   currentUser?: import('../../types').DemoUser | null;
+  claims?: import('../../types').Claim[];
+  onNavigateToTab?: (tab: any) => void;
+  onSelectClaimId?: (id: any) => void;
+  setPreviewDoc?: (doc: any) => void;
   addNotification?: (
     title: string,
     message: string,
@@ -83,6 +87,10 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
   isRtl = false,
   lang = 'en',
   currentUser,
+  claims = [],
+  onNavigateToTab,
+  onSelectClaimId,
+  setPreviewDoc,
   addNotification,
   showToast,
 }) => {
@@ -91,7 +99,7 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
   const tenantCompanyId = isSubsidiaryUser ? currentUser.companyId : 'ALL';
 
   const [selectedSubsidiary, setSelectedSubsidiary] = useState<string>(tenantCompanyId);
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SLA_BOTTLENECKS' | 'PROJECT_DEEP_DIVE'>('OVERVIEW');
+  const [activeDashboardTab, setActiveDashboardTab] = useState<'OVERVIEW' | 'SLA_BOTTLENECKS' | 'PROJECT_DEEP_DIVE'>('OVERVIEW');
   const [expandedSlaClaimId, setExpandedSlaClaimId] = useState<string | null>(null);
 
   // Sync selectedSubsidiary if user changes
@@ -309,9 +317,9 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
       {/* Navigation Tabs */}
       <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 text-sm font-medium">
         <button
-          onClick={() => setActiveTab('OVERVIEW')}
+          onClick={() => setActiveDashboardTab('OVERVIEW')}
           className={`pb-3 transition-colors relative ${
-            activeTab === 'OVERVIEW'
+            activeDashboardTab === 'OVERVIEW'
               ? 'text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500 font-semibold'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
@@ -319,9 +327,9 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
           {isRtl ? 'مصفوفة أداء القيمة المكتسبة (EVM)' : 'EVM Project Performance Matrix'}
         </button>
         <button
-          onClick={() => setActiveTab('SLA_BOTTLENECKS')}
+          onClick={() => setActiveDashboardTab('SLA_BOTTLENECKS')}
           className={`pb-3 transition-colors relative flex items-center gap-2 ${
-            activeTab === 'SLA_BOTTLENECKS'
+            activeDashboardTab === 'SLA_BOTTLENECKS'
               ? 'text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500 font-semibold'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
@@ -336,7 +344,7 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
       </div>
 
       {/* Tab 1: EVM Detailed Matrix Table */}
-      {activeTab === 'OVERVIEW' && (
+      {activeDashboardTab === 'OVERVIEW' && (
         <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/90">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -426,7 +434,7 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
       )}
 
       {/* Tab 2: SLA Bottleneck Monitoring */}
-      {activeTab === 'SLA_BOTTLENECKS' && (
+      {activeDashboardTab === 'SLA_BOTTLENECKS' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-3">
@@ -509,36 +517,41 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* Notification Button: ONLY available to NOC HQ auditors/admin. Disabled for subsidiary roles (subsidiary_pm & subsidiary_finance) */}
-                        {!isSubsidiaryUser && currentUser?.role !== 'subsidiary_pm' && currentUser?.role !== 'subsidiary_finance' ? (
+                        {/* Action Button: PMO Auditor signs Form 4 directly; Subsidiary PMs see read-only Pending Audit status */}
+                        {currentUser?.role === 'pmo_auditor' || currentUser?.role === 'system_admin' ? (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (addNotification) {
-                                addNotification(
-                                  "High SLA Bottleneck Alert",
-                                  `SLA breach warning issued for claim ${b.claimId} (${b.project}). Elapsed time: ${b.elapsedBusinessHours}h. Immediate PMO Form 4 audit review required.`,
-                                  "error",
-                                  b.claimId,
-                                  "approval_control_tower",
-                                  undefined,
-                                  b.subsidiary,
-                                  true,
-                                  "high"
-                                );
+                              const hostClaim = claims.find(c => c.code === b.claimId || c.id === b.claimId);
+                              if (hostClaim && setPreviewDoc) {
+                                const form4Doc = hostClaim.documents.find(d => d.name.startsWith("Form_4_Technical_Approval_") || d.document_type === "technical_approval_form") || {
+                                  id: `doc-form4-${hostClaim.id}`,
+                                  name: `Form_4_Technical_Approval_${hostClaim.code}.pdf`,
+                                  size: "1.2 MB",
+                                  uploadedAt: "Now",
+                                  type: "PDF" as const,
+                                  url: `/noc_vault/evidence/Form_4_Technical_Approval_${hostClaim.code}.pdf`,
+                                  document_type: "technical_approval_form",
+                                  claimId: hostClaim.id
+                                };
+                                setPreviewDoc(form4Doc);
+                              } else {
+                                if (onSelectClaimId) onSelectClaimId(b.claimId);
+                                if (onNavigateToTab) onNavigateToTab("approval_control_tower");
                               }
                               if (showToast) {
                                 showToast(
                                   isRtl
-                                    ? `تم إرسال إشعار خرق SLA عاجل لمدقق المكتب الهندسي (Eng. Nadia Al-Kout) للمطالبة ${b.claimId}.`
-                                    : `High priority SLA Breach alert dispatched to PMO Auditor (Eng. Nadia Al-Kout) for claim ${b.claimId}.`,
-                                  "error"
+                                    ? `جارٍ فتح نموذج اعتماد التدقيق الفني (Form 4) للمطالبة ${b.claimId}.`
+                                    : `Opening Form 4 Technical Audit review modal for claim ${b.claimId}.`,
+                                  "info"
                                 );
                               }
                             }}
-                            className="text-xs px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold transition-all shadow cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
+                            className="text-xs px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold transition-all shadow cursor-pointer flex items-center gap-1.5 active:scale-95 shrink-0"
                           >
-                            {isRtl ? 'إرسال تنبيه للمدقق' : 'Notify PMO Auditor'}
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                            {isRtl ? 'مراجعة واعتماد (نموذج 4)' : 'Review & Sign (Form 4)'}
                           </button>
                         ) : (
                           <span className="text-[11px] px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold rounded-lg border border-slate-200 dark:border-slate-700/80 shadow-xs shrink-0 flex items-center gap-1.5">
