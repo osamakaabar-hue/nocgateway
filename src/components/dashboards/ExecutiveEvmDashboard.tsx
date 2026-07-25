@@ -92,6 +92,7 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
 
   const [selectedSubsidiary, setSelectedSubsidiary] = useState<string>(tenantCompanyId);
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SLA_BOTTLENECKS' | 'PROJECT_DEEP_DIVE'>('OVERVIEW');
+  const [expandedSlaClaimId, setExpandedSlaClaimId] = useState<string | null>(null);
 
   // Sync selectedSubsidiary if user changes
   React.useEffect(() => {
@@ -442,60 +443,140 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
             <div className="space-y-3">
               {summary.projects.flatMap(p => p.slaBreachedClaimsCount > 0 ? [{
                 claimId: `CLM-${p.projectId.slice(-3)}-089`,
+                projectEn: p.projectNameEn,
+                projectAr: p.projectNameAr,
                 project: isRtl ? p.projectNameAr : p.projectNameEn,
                 subsidiary: p.subsidiaryId,
                 submittedAt: '2026-07-20T09:00:00.000Z',
                 elapsedBusinessHours: p.avgSlaResolutionHours,
+                bac: p.budgetAtCompletion,
+                ev: p.earnedValue,
+                ac: p.actualCost,
+                cpi: p.costPerformanceIndex,
+                spi: p.schedulePerformanceIndex,
+                pendingStage: isRtl ? 'بانتظار نموذج 4 (الاعتماد الفني للمكتب الهندسي)' : 'Pending Form 4 (PMO Technical Approval)',
+                assignedActor: isRtl ? 'م. نادية الكوت (مدقق فني)' : 'Eng. Nadia Al-Kout (PMO Auditor)',
                 status: 'SLA_BREACH'
-              }] : []).map((b, i) => (
-                <div key={i} className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/40 rounded-lg flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-rose-600 dark:text-rose-400 text-sm">{b.claimId}</span>
-                      <span className="text-xs px-2 py-0.5 bg-rose-500/20 text-rose-700 dark:text-rose-300 rounded font-medium">{b.subsidiary}</span>
-                    </div>
-                    <div className="text-xs text-slate-800 dark:text-slate-300 mt-1">{b.project}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      {isRtl ? `تاريخ التقديم: ${new Date(b.submittedAt).toLocaleDateString('ar-LY')}` : `Submitted: ${new Date(b.submittedAt).toLocaleDateString()}`}
-                    </div>
-                  </div>
-
-                  <div className="text-end">
-                    <div className="text-lg font-bold text-rose-600 dark:text-rose-400">{b.elapsedBusinessHours} {isRtl ? 'ساعة' : 'hrs'}</div>
-                    <div className="text-[10px] text-rose-600 dark:text-rose-300 uppercase font-semibold">
-                      {isRtl ? 'تجاوز حد 48 ساعة المحدد' : 'Exceeds 48h SLA Target'}
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (addNotification) {
-                          addNotification(
-                            "High SLA Bottleneck Alert",
-                            `SLA breach warning issued for claim ${b.claimId} (${b.project}). Elapsed time: ${b.elapsedBusinessHours}h. Immediate PMO Form 4 audit review required.`,
-                            "error",
-                            b.claimId,
-                            "approval_control_tower",
-                            undefined,
-                            b.subsidiary,
-                            true,
-                            "high"
-                          );
-                        }
-                        if (showToast) {
-                          showToast(
-                            isRtl
-                              ? `تم إرسال إشعار خرق SLA عاجل لمدقق المكتب الهندسي (Eng. Nadia Al-Kout) للمطالبة ${b.claimId}.`
-                              : `High priority SLA Breach alert dispatched to PMO Auditor (Eng. Nadia Al-Kout) for claim ${b.claimId}.`,
-                            "error"
-                          );
-                        }
-                      }}
-                      className="mt-2 text-xs px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium transition-colors cursor-pointer shadow flex items-center gap-1 active:scale-95"
+              }] : []).map((b, i) => {
+                const isExpanded = expandedSlaClaimId === b.claimId;
+                return (
+                  <div
+                    key={i}
+                    className={`border rounded-xl transition-all duration-200 shadow-sm ${
+                      isExpanded
+                        ? 'bg-rose-50/90 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700/60 ring-2 ring-rose-500/20'
+                        : 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/40 hover:border-rose-300 dark:hover:border-rose-700'
+                    }`}
+                  >
+                    {/* Primary Card Header Row */}
+                    <div
+                      onClick={() => setExpandedSlaClaimId(prev => prev === b.claimId ? null : b.claimId)}
+                      className="p-4 flex items-center justify-between cursor-pointer select-none"
                     >
-                      {isRtl ? 'إرسال تنبيه للمدقق الفني' : 'Notify PMO Auditor'}
-                    </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          className="p-1 rounded bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 transition-transform"
+                          title={isRtl ? 'عرض التاصيل الحالية' : 'Toggle Pending Details'}
+                        >
+                          {isExpanded ? (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"/></svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+                          )}
+                        </button>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-rose-700 dark:text-rose-400 text-sm">{b.claimId}</span>
+                            <span className="text-[10px] px-2 py-0.5 bg-rose-200 dark:bg-rose-900/60 text-rose-800 dark:text-rose-200 rounded-full font-mono font-bold">
+                              {b.subsidiary}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded font-semibold">
+                              {b.pendingStage}
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-1">{b.project}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {isRtl ? `تاريخ التقديم: ${new Date(b.submittedAt).toLocaleDateString('ar-LY')}` : `Submitted: ${new Date(b.submittedAt).toLocaleDateString()}`}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="text-end">
+                          <div className="text-lg font-extrabold text-rose-600 dark:text-rose-400">{b.elapsedBusinessHours} {isRtl ? 'ساعة' : 'hrs'}</div>
+                          <div className="text-[10px] text-rose-600 dark:text-rose-300 uppercase font-semibold">
+                            {isRtl ? 'تجاوز حد 48h المحدد' : 'Exceeds 48h SLA Target'}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (addNotification) {
+                              addNotification(
+                                "High SLA Bottleneck Alert",
+                                `SLA breach warning issued for claim ${b.claimId} (${b.project}). Elapsed time: ${b.elapsedBusinessHours}h. Immediate PMO Form 4 audit review required.`,
+                                "error",
+                                b.claimId,
+                                "approval_control_tower",
+                                undefined,
+                                b.subsidiary,
+                                true,
+                                "high"
+                              );
+                            }
+                            if (showToast) {
+                              showToast(
+                                isRtl
+                                  ? `تم إرسال إشعار خرق SLA عاجل لمدقق المكتب الهندسي (Eng. Nadia Al-Kout) للمطالبة ${b.claimId}.`
+                                  : `High priority SLA Breach alert dispatched to PMO Auditor (Eng. Nadia Al-Kout) for claim ${b.claimId}.`,
+                                "error"
+                              );
+                            }
+                          }}
+                          className="text-xs px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold transition-all shadow cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
+                        >
+                          {isRtl ? 'إرسال تنبيه' : 'Notify PMO Auditor'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expandable SLA Bottleneck Detailed Breakdown */}
+                    {isExpanded && (
+                      <div className="p-4 border-t border-rose-200 dark:border-rose-800/60 bg-white/80 dark:bg-slate-900/90 rounded-b-xl space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                          <div className="p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
+                            <span className="text-[10px] text-slate-400 font-bold block">{isRtl ? 'المسؤول المكلف بالاعتماد' : 'Assigned Reviewer'}</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{b.assignedActor}</span>
+                          </div>
+                          <div className="p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
+                            <span className="text-[10px] text-slate-400 font-bold block">{isRtl ? 'مؤشر الأداء المالي (CPI)' : 'Cost Index (CPI)'}</span>
+                            <span className={`font-mono font-bold ${b.cpi < 1.0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600'}`}>
+                              {b.cpi.toFixed(3)} ({b.cpi < 1.0 ? (isRtl ? 'تجاوز مالي' : 'Over Budget') : (isRtl ? 'سليم' : 'Normal')})
+                            </span>
+                          </div>
+                          <div className="p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
+                            <span className="text-[10px] text-slate-400 font-bold block">{isRtl ? 'مؤشر الجدول الزمني (SPI)' : 'Schedule Index (SPI)'}</span>
+                            <span className={`font-mono font-bold ${b.spi < 1.0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600'}`}>
+                              {b.spi.toFixed(3)} ({b.spi < 1.0 ? (isRtl ? 'متأخر زمنياً' : 'Behind') : (isRtl ? 'سليم' : 'Normal')})
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Detailed Bottleneck Explanation */}
+                        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs leading-relaxed text-amber-900 dark:text-amber-200 flex items-start gap-2">
+                          <span className="font-bold shrink-0 text-amber-600 dark:text-amber-400">ℹ️ {isRtl ? 'تفاصيل الاختناق:' : 'Bottleneck Reason:'}</span>
+                          <span>
+                            {isRtl
+                              ? `تم تقديم مطالبة نسب الإنجاز (Form 2) بواسطة شركة ${b.subsidiary} بتاريخ 2026/07/20. يتطلب إجراء الحوكمة مراجعة المطابقة الفنية وإيقاع الختم التشفيري لنموذج Form 4 بواسطة المكتب الهندسي للمؤسسة. الوقت المنقضي الفعلي (${b.elapsedBusinessHours} ساعة عمل) يتجاوز الحد الأقصى المسموح به في اتفاقية مستوى الخدمة (48 ساعة).`
+                              : `Progress claim Form 2 was submitted by ${b.subsidiary} on July 20, 2026. Governance rules require technical audit verification and cryptographic stamp on Form 4 by NOC PMO. Total elapsed business time (${b.elapsedBusinessHours} hrs) exceeds the 48-hour SLA threshold.`}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
