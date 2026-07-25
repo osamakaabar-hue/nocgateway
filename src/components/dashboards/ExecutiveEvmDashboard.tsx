@@ -509,35 +509,43 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
                           </div>
                         </div>
 
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (addNotification) {
-                              addNotification(
-                                isSubsidiaryUser ? "Subsidiary SLA Expedite Request" : "High SLA Bottleneck Alert",
-                                `Expedite Request from ${b.subsidiary} (Eng. Salem / Tarek): Form 4 Technical Audit is delayed for claim ${b.claimId} (${b.project}). Elapsed business hours: ${b.elapsedBusinessHours}h. Immediate PMO Form 4 audit review requested.`,
-                                "warning",
-                                b.claimId,
-                                "approval_control_tower",
-                                undefined,
-                                b.subsidiary,
-                                true,
-                                "high"
-                              );
-                            }
-                            if (showToast) {
-                              showToast(
-                                isRtl
-                                  ? `تم إرسال تذكير عاجل للمدقق الفني بالمؤسسة (Eng. Nadia Al-Kout) للإسراع في اعتماد ${b.claimId}.`
-                                  : `Urgent SLA expedite notification sent to PMO Auditor (Eng. Nadia Al-Kout) for claim ${b.claimId}.`,
-                                "info"
-                              );
-                            }
-                          }}
-                          className="text-xs px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold transition-all shadow cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
-                        >
-                          {isRtl ? 'إرسال تذكير للمدقق' : 'Nudge PMO Auditor'}
-                        </button>
+                        {/* Notification Button: ONLY available to NOC HQ auditors/admin. Disabled for subsidiary roles (subsidiary_pm & subsidiary_finance) */}
+                        {!isSubsidiaryUser && currentUser?.role !== 'subsidiary_pm' && currentUser?.role !== 'subsidiary_finance' ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (addNotification) {
+                                addNotification(
+                                  "High SLA Bottleneck Alert",
+                                  `SLA breach warning issued for claim ${b.claimId} (${b.project}). Elapsed time: ${b.elapsedBusinessHours}h. Immediate PMO Form 4 audit review required.`,
+                                  "error",
+                                  b.claimId,
+                                  "approval_control_tower",
+                                  undefined,
+                                  b.subsidiary,
+                                  true,
+                                  "high"
+                                );
+                              }
+                              if (showToast) {
+                                showToast(
+                                  isRtl
+                                    ? `تم إرسال إشعار خرق SLA عاجل لمدقق المكتب الهندسي (Eng. Nadia Al-Kout) للمطالبة ${b.claimId}.`
+                                    : `High priority SLA Breach alert dispatched to PMO Auditor (Eng. Nadia Al-Kout) for claim ${b.claimId}.`,
+                                  "error"
+                                );
+                              }
+                            }}
+                            className="text-xs px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold transition-all shadow cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
+                          >
+                            {isRtl ? 'إرسال تنبيه للمدقق' : 'Notify PMO Auditor'}
+                          </button>
+                        ) : (
+                          <span className="text-[11px] px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold rounded-lg border border-slate-200 dark:border-slate-700/80 shadow-xs shrink-0 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                            {isRtl ? 'قيد مراجعة المؤسسة' : 'Pending NOC Audit'}
+                          </span>
+                        )}
                       </div>
                     </div>
 
