@@ -968,6 +968,10 @@ export default function App() {
       }
       return c;
     });
+
+    // Dismiss/clear pending SLA bottleneck notifications for this claim
+    setNotifications(prev => prev.filter(n => !(n.claimId === hostClaim.id && n.title.includes("SLA"))));
+
     setClaims(updatedClaims);
     
     // Dispatch system-wide real-time notification
