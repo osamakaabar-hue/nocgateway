@@ -450,31 +450,43 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
 
             <div className="space-y-3">
               {summary.projects.flatMap(p => {
-                // Find matching live claim from claims state if available
-                const matchingClaim = claims.find(c => c.companyId === p.subsidiaryId || c.company.includes(p.subsidiaryId));
-                const form4Signed = matchingClaim ? (matchingClaim.status !== 'pending_gatekeeper' && matchingClaim.status !== 'draft') : false;
-                
-                // If Form 4 has been signed, this project SLA bottleneck is resolved!
-                if (form4Signed) return [];
+                if (p.slaBreachedClaimsCount <= 0) return [];
 
-                return [{
-                  claimId: matchingClaim ? matchingClaim.code : `CLM-${p.projectId.slice(-3)}-089`,
-                  realClaimId: matchingClaim ? matchingClaim.id : `CLM-${p.projectId.slice(-3)}-089`,
-                  projectEn: p.projectNameEn,
-                  projectAr: p.projectNameAr,
-                  project: isRtl ? p.projectNameAr : p.projectNameEn,
-                  subsidiary: p.subsidiaryId,
-                  submittedAt: matchingClaim ? matchingClaim.submissionDate : '2026-07-20T09:00:00.000Z',
-                  elapsedBusinessHours: p.avgSlaResolutionHours,
-                  bac: p.budgetAtCompletion,
-                  ev: p.earnedValue,
-                  ac: p.actualCost,
-                  cpi: p.costPerformanceIndex,
-                  spi: p.schedulePerformanceIndex,
-                  pendingStage: isRtl ? 'بانتظار نموذج 4 (الاعتماد الفني للمكتب الهندسي)' : 'Pending Form 4 (PMO Technical Approval)',
-                  assignedActor: isRtl ? 'م. نادية الكوت (مدقق فني)' : 'Eng. Nadia Al-Kout (PMO Auditor)',
-                  status: 'SLA_BREACH'
-                }];
+                // Find matching live claims for this subsidiary
+                const matchingClaims = claims.filter(c => c.companyId === p.subsidiaryId || c.company.includes(p.subsidiaryId));
+                
+                // Check if the primary claim for this subsidiary has signed Form 4
+                const primaryClaim = matchingClaims[0];
+                const form4Signed = primaryClaim ? (primaryClaim.status !== 'pending_gatekeeper' && primaryClaim.status !== 'draft') : false;
+
+                // Render cards matching slaBreachedClaimsCount
+                const items = [];
+                const displayCount = form4Signed ? Math.max(0, p.slaBreachedClaimsCount - 1) : p.slaBreachedClaimsCount;
+
+                for (let idx = 0; idx < displayCount; idx++) {
+                  const claimCode = primaryClaim && idx === 0 ? primaryClaim.code : `${p.subsidiaryId}-26-00${idx + 1}`;
+                  const claimId = primaryClaim && idx === 0 ? primaryClaim.id : `claim-${p.subsidiaryId.toLowerCase()}-${idx + 1}`;
+
+                  items.push({
+                    claimId: claimCode,
+                    realClaimId: claimId,
+                    projectEn: p.projectNameEn,
+                    projectAr: p.projectNameAr,
+                    project: isRtl ? p.projectNameAr : p.projectNameEn,
+                    subsidiary: p.subsidiaryId,
+                    submittedAt: primaryClaim && idx === 0 ? primaryClaim.submissionDate : '2026-07-20T09:00:00.000Z',
+                    elapsedBusinessHours: Number((p.avgSlaResolutionHours + (idx * 5.2)).toFixed(1)),
+                    bac: p.budgetAtCompletion,
+                    ev: p.earnedValue,
+                    ac: p.actualCost,
+                    cpi: p.costPerformanceIndex,
+                    spi: p.schedulePerformanceIndex,
+                    pendingStage: isRtl ? 'بانتظار نموذج 4 (الاعتماد الفني للمكتب الهندسي)' : 'Pending Form 4 (PMO Technical Approval)',
+                    assignedActor: isRtl ? 'م. نادية الكوت (مدقق فني)' : 'Eng. Nadia Al-Kout (PMO Auditor)',
+                    status: 'SLA_BREACH'
+                  });
+                }
+                return items;
               }).map((b, i) => {
                 const isExpanded = expandedSlaClaimId === b.claimId;
                 return (
