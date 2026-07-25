@@ -449,23 +449,33 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
             </p>
 
             <div className="space-y-3">
-              {summary.projects.flatMap(p => p.slaBreachedClaimsCount > 0 ? [{
-                claimId: `CLM-${p.projectId.slice(-3)}-089`,
-                projectEn: p.projectNameEn,
-                projectAr: p.projectNameAr,
-                project: isRtl ? p.projectNameAr : p.projectNameEn,
-                subsidiary: p.subsidiaryId,
-                submittedAt: '2026-07-20T09:00:00.000Z',
-                elapsedBusinessHours: p.avgSlaResolutionHours,
-                bac: p.budgetAtCompletion,
-                ev: p.earnedValue,
-                ac: p.actualCost,
-                cpi: p.costPerformanceIndex,
-                spi: p.schedulePerformanceIndex,
-                pendingStage: isRtl ? 'بانتظار نموذج 4 (الاعتماد الفني للمكتب الهندسي)' : 'Pending Form 4 (PMO Technical Approval)',
-                assignedActor: isRtl ? 'م. نادية الكوت (مدقق فني)' : 'Eng. Nadia Al-Kout (PMO Auditor)',
-                status: 'SLA_BREACH'
-              }] : []).map((b, i) => {
+              {summary.projects.flatMap(p => {
+                // Find matching live claim from claims state if available
+                const matchingClaim = claims.find(c => c.companyId === p.subsidiaryId || c.company.includes(p.subsidiaryId));
+                const form4Signed = matchingClaim ? (matchingClaim.status !== 'pending_gatekeeper' && matchingClaim.status !== 'draft') : false;
+                
+                // If Form 4 has been signed, this project SLA bottleneck is resolved!
+                if (form4Signed) return [];
+
+                return [{
+                  claimId: matchingClaim ? matchingClaim.code : `CLM-${p.projectId.slice(-3)}-089`,
+                  realClaimId: matchingClaim ? matchingClaim.id : `CLM-${p.projectId.slice(-3)}-089`,
+                  projectEn: p.projectNameEn,
+                  projectAr: p.projectNameAr,
+                  project: isRtl ? p.projectNameAr : p.projectNameEn,
+                  subsidiary: p.subsidiaryId,
+                  submittedAt: matchingClaim ? matchingClaim.submissionDate : '2026-07-20T09:00:00.000Z',
+                  elapsedBusinessHours: p.avgSlaResolutionHours,
+                  bac: p.budgetAtCompletion,
+                  ev: p.earnedValue,
+                  ac: p.actualCost,
+                  cpi: p.costPerformanceIndex,
+                  spi: p.schedulePerformanceIndex,
+                  pendingStage: isRtl ? 'بانتظار نموذج 4 (الاعتماد الفني للمكتب الهندسي)' : 'Pending Form 4 (PMO Technical Approval)',
+                  assignedActor: isRtl ? 'م. نادية الكوت (مدقق فني)' : 'Eng. Nadia Al-Kout (PMO Auditor)',
+                  status: 'SLA_BREACH'
+                }];
+              }).map((b, i) => {
                 const isExpanded = expandedSlaClaimId === b.claimId;
                 return (
                   <div
@@ -522,7 +532,7 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              const hostClaim = claims.find(c => c.code === b.claimId || c.id === b.claimId);
+                              const hostClaim = claims.find(c => c.code === b.claimId || c.id === b.claimId || c.companyId === b.subsidiary) || claims[0];
                               if (hostClaim && setPreviewDoc) {
                                 const form4Doc = hostClaim.documents.find(d => d.name.startsWith("Form_4_Technical_Approval_") || d.document_type === "technical_approval_form") || {
                                   id: `doc-form4-${hostClaim.id}`,
@@ -536,7 +546,7 @@ export const ExecutiveEvmDashboard: React.FC<ExecutiveEvmDashboardProps> = ({
                                 };
                                 setPreviewDoc(form4Doc);
                               } else {
-                                if (onSelectClaimId) onSelectClaimId(b.claimId);
+                                if (onSelectClaimId) onSelectClaimId(b.realClaimId);
                                 if (onNavigateToTab) onNavigateToTab("approval_control_tower");
                               }
                               if (showToast) {
